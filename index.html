@@ -166,11 +166,11 @@ document.addEventListener('DOMContentLoaded',initSupabase);
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/vendor/tabler/tabler-icons.min.css">
-<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-<script src="/vendor/leaflet/leaflet.js"></script>
-<script src="/vendor/leaflet/leaflet.markercluster.js"></script>
-<link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1530,7 +1530,7 @@ let userLat=52.518,userLng=13.398;
 function haversine(lat1,lng1,lat2,lng2){const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 function distLabel(km){return km<1?(Math.round(km*1000)+"m"):(km.toFixed(1)+" km");}
 // nearbySpots defined in OSM block below
-const TILE_OPT={subdomains:'abcd',maxZoom:19,noWrap:true,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
+const TILE_OPT={subdomains:'abcd',maxZoom:19,noWrap:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
 const TILES={
   // Dark mit Straßen/Stadt-Labels
   dark:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
@@ -2231,9 +2231,9 @@ function initMap(clat,clng){
     maxBoundsViscosity:1.0,
   }).setView([clat,clng],14);
   curTile=TILES.dark();curTile.addTo(MAP);
-  // Tile error handler - show offline notice
+  // Tile error handler - Banner NUR wenn wirklich offline (nicht bei einzelnen Tile-Fehlern)
   curTile.on('tileerror',function(){
-    if(!document.getElementById('offline-notice')){
+    if(navigator.onLine===false && !document.getElementById('offline-notice')){
       var n=document.createElement('div');
       n.id='offline-notice';
       n.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(255,71,87,.9);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;z-index:1000;pointer-events:none';
