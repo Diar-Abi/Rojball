@@ -1,14 +1,18 @@
 // Rojball Service Worker — Caching + Push Notifications
-const CACHE='rojball-v5';
+const CACHE='rojball-v6';
 const TILE_CACHE='rojball-tiles-v1';
 const PRECACHE=[
   '/',
   '/index.html',
   '/spots-data.js',
-  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
-  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css',
-  'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+  '/vendor/leaflet/leaflet.js',
+  '/vendor/leaflet/leaflet.css',
+  '/vendor/leaflet/leaflet.markercluster.js',
+  '/vendor/leaflet/MarkerCluster.css',
+  '/vendor/leaflet/MarkerCluster.Default.css',
+  '/vendor/tabler/tabler-icons.min.css',
+  '/vendor/tabler/fonts/tabler-icons.woff2',
+  '/vendor/tabler/fonts/tabler-icons.woff',
 ];
 
 self.addEventListener('install',e=>{
@@ -47,7 +51,7 @@ self.addEventListener('fetch',e=>{
     return;
   }
 
-  // App Shell: index.html
+  // App Shell: index.html — immer frisch aus dem Netz, Cache als Fallback
   if(url.endsWith('/')||url.includes('/index.html')||url===self.registration.scope){
     e.respondWith(
       fetch(e.request).then(res=>{
@@ -58,16 +62,30 @@ self.addEventListener('fetch',e=>{
     return;
   }
 
-  // Assets (JS, CSS, Fonts)
+  // Lokale vendor-Dateien + spots-data: Cache-first, sonst Netz und cachen
+  if(url.includes('/vendor/')||url.includes('/spots-data.js')){
+    e.respondWith(
+      caches.match(e.request).then(cached=>{
+        if(cached)return cached;
+        return fetch(e.request).then(res=>{
+          if(res.ok){caches.open(CACHE).then(c=>c.put(e.request,res.clone()));}
+          return res;
+        }).catch(()=>cached);
+      })
+    );
+    return;
+  }
+
+  // Sonstige Assets (Google Fonts etc.)
   e.respondWith(
     caches.match(e.request).then(cached=>{
       if(cached)return cached;
       return fetch(e.request).then(res=>{
-        if(res.ok&&(url.includes('cdn.jsdelivr')||url.includes('fonts.googleapis'))){
+        if(res.ok&&url.includes('fonts.googleapis')){
           caches.open(CACHE).then(c=>c.put(e.request,res.clone()));
         }
         return res;
-      }).catch(()=>cached||caches.match('/index.html'));
+      }).catch(()=>cached);
     })
   );
 });
