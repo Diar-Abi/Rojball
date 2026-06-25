@@ -166,11 +166,11 @@ document.addEventListener('DOMContentLoaded',initSupabase);
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="/vendor/tabler/tabler-icons.min.css">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/vendor/leaflet/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1426,22 +1426,15 @@ function finishAuth(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   initLang();
-  // Karte SOFORT initialisieren (unabhängig von GPS), damit sie nie hängt
-  initMap(userLat,userLng);
-  loadTopbarWeather(userLat,userLng);
-  // GPS danach separat holen und Karte nachzentrieren
+  // GPS sofort holen, dann Karte zentrieren
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
       userLat=pos.coords.latitude;userLng=pos.coords.longitude;
-      if(MAP){
-        MAP.setView([userLat,userLng],MAP.getZoom());
-        if(userMarker)MAP.removeLayer(userMarker);
-        userMarker=L.marker([userLat,userLng],{icon:L.divIcon({className:'',html:'<div style="width:16px;height:16px;background:#54a0ff;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(84,160,255,.3)"></div>',iconSize:[16,16],iconAnchor:[8,8]})}).addTo(MAP);
-      }
+      initMap(userLat,userLng);
+      if(MAP){if(userMarker)MAP.removeLayer(userMarker);userMarker=L.marker([userLat,userLng],{icon:L.divIcon({className:'',html:'<div style="width:16px;height:16px;background:#54a0ff;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(84,160,255,.3)"></div>',iconSize:[16,16],iconAnchor:[8,8]})}).addTo(MAP);}
       startLocationTracking();
       showToast(T('standortGefunden'),'ok');
       rojTrack('gps_found');
-      loadTopbarWeather(userLat,userLng);
       // Stadtname automatisch ermitteln
       if(!P.city){
         fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLng}&format=json&accept-language=de`,{headers:{'User-Agent':'RojballApp/1.0'}})
@@ -1450,8 +1443,10 @@ function finishAuth(){
             if(city){P.city=city;saveP();const el=document.getElementById('p-city-lbl');if(el)el.textContent=city;}
           }).catch(()=>{});
       }
-    },()=>{},{timeout:5000});
-  }
+    // Wetter sofort mit echten Koordinaten laden
+    loadTopbarWeather(pos.coords.latitude,pos.coords.longitude);
+    },()=>{initMap(52.518,13.398);loadTopbarWeather(52.518,13.398);},{timeout:5000});
+  } else { initMap(52.518,13.398);loadTopbarWeather(52.518,13.398); }
   loadSubmittedSpots();
   updateChatBadge();
   loadGlobalEvents();
