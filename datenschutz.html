@@ -3,57 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index,follow">
 <title>Datenschutzerklärung – Rojball</title>
 <style>
-  body { font-family: -apple-system, sans-serif; max-width: 700px; margin: 0 auto; padding: 24px 16px; background: #0d0d0d; color: #e0e0e0; line-height: 1.7; }
-  h1 { color: #00ff88; font-size: 24px; }
-  h2 { color: #00ff88; font-size: 17px; margin-top: 32px; }
-  a { color: #00ff88; }
-  p, li { font-size: 15px; }
+  :root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a24;--text:#f0f0f5;--text2:#9a9aa8;--green:#00c853;--bdr:#26262f;--r:14px}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;font-size:15px}
+  .wrap{max-width:760px;margin:0 auto;padding:24px 18px 60px}
+  .brand{font-weight:900;font-size:26px;letter-spacing:-.5px;margin:0 0 4px}
+  .brand span{color:var(--green)}
+  h1{font-size:22px;margin:18px 0 6px}
+  .sub{color:var(--text2);font-size:13px;margin-bottom:22px}
+  .banner{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:18px}
+  .banner b{display:block;font-size:14px;margin-bottom:3px}
+  .banner div{font-size:12px;color:var(--text2)}
+  .sec{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+  .sec h3{margin:0 0 8px;font-size:16px;color:var(--green)}
+  .sec p{margin:0;font-size:14px}
+  ul{margin:0;padding-left:18px}
+  li{margin-bottom:6px;font-size:14px}
+  a{color:var(--green)}
+  .foot{color:var(--text2);font-size:12px;margin-top:24px;text-align:center}
 </style>
 </head>
 <body>
-<h1>Datenschutzerklärung</h1>
-<p>Stand: Juni 2026</p>
+<div class="wrap">
+  <p class="brand">ROJ<span>BALL</span></p>
+  <h1>Datenschutzerklärung</h1>
+  <p class="sub">Stand: Juni 2026</p>
 
-<h2>1. Verantwortlicher</h2>
-<p>Rojball<br>Kontakt: kontakt@rojball.de</p>
+  <div class="banner">
+    <b>Rojball ist datenschutzfreundlich</b>
+    <div>Anonyme Nutzung ohne Account möglich. Standortdaten verlassen nie dein Gerät dauerhaft.</div>
+  </div>
 
-<h2>2. Welche Daten wir erheben</h2>
-<p>Rojball erhebt nur Daten die für den Betrieb der App notwendig sind:</p>
-<ul>
-  <li><strong>Standortdaten:</strong> Nur wenn du die Standortfunktion aktiv nutzt, um Sportplätze in deiner Nähe zu zeigen. Die Daten werden nicht gespeichert oder weitergegeben.</li>
-  <li><strong>Account-Daten:</strong> Bei Registrierung: E-Mail-Adresse und selbst gewählter Nutzername. Gespeichert über Supabase (EU-Server).</li>
-  <li><strong>Nutzungsdaten:</strong> Erstellte Events und Community-Bewertungen die du abgibst.</li>
-</ul>
+  <div class="sec"><h3>1. Verantwortlicher</h3><p>Verantwortlich im Sinne der DSGVO:<br>Diar Jamal<br>c/o Adressgeber #2106, An der Alten Ziegelei 38, 48157 Münster<br>Kontakt: <a href="mailto:datenschutz@rojball.de">datenschutz@rojball.de</a></p></div>
 
-<h2>3. Wofür wir Daten nutzen</h2>
-<ul>
-  <li>Bereitstellung der App-Funktionen (Karte, Events, Community)</li>
-  <li>Anzeige von Sportplätzen in deiner Nähe</li>
-  <li>Keine Weitergabe an Dritte zu Werbezwecken</li>
-</ul>
+  <div class="sec"><h3>2. Welche Daten erhoben werden</h3><ul>
+    <li><b>Standortdaten</b> — nur wenn du aktiv zustimmst. Werden für Kartenanzeige und Platzsuche genutzt, nicht dauerhaft gespeichert.</li>
+    <li><b>Account-Daten</b> (E-Mail, Nickname, Passwort-Hash) — bei Registrierung auf Supabase-Servern in der EU gespeichert (DSGVO-konform).</li>
+    <li><b>Profilbild</b> — bei eingeloggten Nutzern auf Supabase, bei anonymer Nutzung lokal im Browser.</li>
+    <li><b>Profil-Daten</b> (Nickname, Stadt, Lieblingssport) — bei eingeloggten Nutzern auf Supabase, sonst nur lokal.</li>
+    <li><b>Event-Daten</b> — von dir eingetragene Spiele/Turniere werden auf Supabase gespeichert und sind für andere Nutzer sichtbar.</li>
+    <li><b>Eingetragene Plätze & Status-Meldungen</b> — auf Supabase gespeichert, öffentlich sichtbar.</li>
+    <li><b>Favoriten</b> — bei eingeloggten Nutzern auf Supabase, sonst lokal.</li>
+    <li><b>Community-Votes</b> (Spielbarkeit) — anonym.</li>
+    <li><b>Fehlerberichte</b> — technische Fehlerdaten (kein Name, keine E-Mail) werden über Sentry (sentry.io) zur Fehlerbehebung übermittelt.</li>
+  </ul></div>
 
-<h2>4. Drittanbieter</h2>
-<ul>
-  <li><strong>OpenStreetMap / Nominatim:</strong> Für Kartendaten und Adresssuche. Datenschutz: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></li>
-  <li><strong>Open-Meteo:</strong> Für Wetterdaten. Keine personenbezogenen Daten übermittelt.</li>
-  <li><strong>Supabase:</strong> Backend und Datenspeicherung auf EU-Servern. Datenschutz: <a href="https://supabase.com/privacy">supabase.com/privacy</a></li>
-</ul>
+  <div class="sec"><h3>3. Drittanbieter & Kartendienste</h3><ul>
+    <li><b>Supabase</b> — Datenbank & Login-System (Hosting in der EU). <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Datenschutzerklärung</a></li>
+    <li><b>OpenStreetMap / CartoDB</b> — Kartenkacheln. Beim Laden können IP-Adressen übermittelt werden.</li>
+    <li><b>Google Fonts</b> — Schriftarten werden von Google-Servern geladen. Dabei kann deine IP-Adresse an Google übermittelt werden. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Datenschutz</a></li>
+    <li><b>Overpass API / Nominatim (OSM)</b> — Abfrage von Sportplätzen und Ortsnamensauflösung. Keine Speicherung personenbezogener Daten.</li>
+    <li><b>Open-Meteo</b> — Wetterdaten. Standort-Koordinaten werden zur Wetterermittlung übermittelt, nicht gespeichert.</li>
+    <li><b>OSRM</b> — Routenberechnung. Koordinaten werden für Wegstrecken übermittelt, nicht gespeichert.</li>
+    <li><b>Sentry</b> — Fehlermonitoring (sentry.io). Technische Fehlerdaten ohne Personenbezug. <a href="https://sentry.io/privacy/" target="_blank" rel="noopener">Datenschutz</a></li>
+  </ul></div>
 
-<h2>5. Speicherdauer</h2>
-<p>Account-Daten werden gespeichert bis du dein Konto löschst. Standortdaten werden nicht dauerhaft gespeichert.</p>
+  <div class="sec"><h3>4. Datenspeicherung</h3><p>Einstellungen, Videos und Stories werden lokal in deinem Browser gespeichert. Account-Daten, Profile, Events, Plätze und Favoriten werden auf Supabase-Servern in der EU gespeichert. Anonyme Nutzung ohne Account ist möglich — dann bleiben alle Daten lokal.</p></div>
 
-<h2>6. Deine Rechte</h2>
-<p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Widerspruch deiner gespeicherten Daten. Anfragen an: kontakt@rojball.de</p>
+  <div class="sec"><h3>5. Deine Rechte (DSGVO)</h3><ul>
+    <li><b>Auskunft:</b> Du kannst jederzeit Auskunft über deine gespeicherten Daten verlangen.</li>
+    <li><b>Löschung:</b> Account-Löschung entfernt alle Server-Daten. Lokale Daten: Browser-Einstellungen → Cache löschen.</li>
+    <li><b>Berichtigung:</b> Profil-Daten kannst du jederzeit selbst im Profil ändern.</li>
+    <li><b>Widerspruch:</b> Standortnutzung jederzeit in den Browser-Einstellungen deaktivierbar.</li>
+    <li><b>Beschwerde:</b> Du hast das Recht, dich bei der zuständigen Datenschutz-Aufsichtsbehörde zu beschweren.</li>
+  </ul></div>
 
-<h2>7. Cookies</h2>
-<p>Rojball verwendet ausschließlich technisch notwendige Cookies (localStorage) für Einstellungen und Session-Daten. Keine Tracking- oder Werbe-Cookies.</p>
+  <div class="sec"><h3>6. Mindestalter</h3><p>Die Nutzung ist Personen ab 16 Jahren gestattet. Jüngere Nutzer benötigen die Zustimmung der Erziehungsberechtigten.</p></div>
 
-<h2>8. Minderjährige</h2>
-<p>Rojball richtet sich nicht gezielt an Kinder unter 13 Jahren. Wir erheben wissentlich keine Daten von Kindern unter 13 Jahren.</p>
+  <div class="sec"><h3>7. Kontakt</h3><p>Bei Fragen zum Datenschutz: <a href="mailto:datenschutz@rojball.de">datenschutz@rojball.de</a></p></div>
 
-<h2>9. Änderungen</h2>
-<p>Diese Datenschutzerklärung kann aktualisiert werden. Die aktuelle Version ist immer unter rojball.de/datenschutz abrufbar.</p>
+  <p class="foot">© 2026 Rojball · <a href="https://rojball.de">rojball.de</a></p>
+</div>
 </body>
 </html>
