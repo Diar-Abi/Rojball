@@ -23,6 +23,8 @@
 <link rel="apple-touch-icon" id="roj-apple-icon">
 <link rel="icon" id="roj-favicon" type="image/png">
 <title>Rojball</title>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/vendor/leaflet/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
 <!-- Sentry Error Reporting (replace DSN before launch) -->
@@ -168,8 +170,6 @@ document.addEventListener('DOMContentLoaded',initSupabase);
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/vendor/tabler/tabler-icons.min.css">
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-<script src="/vendor/leaflet/leaflet.js"></script>
-<script src="/vendor/leaflet/leaflet.markercluster.js"></script>
 <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1538,20 +1538,20 @@ function distLabel(km){return km<1?(Math.round(km*1000)+"m"):(km.toFixed(1)+" km
 const TILE_OPT={subdomains:'abcd',maxZoom:19,noWrap:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
 const TILES={
   // Dark mit Straßen/Stadt-Labels
-  dark:()=>L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
+  dark:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Hell mit Labels
-  light:()=>L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',TILE_OPT),
+  light:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Satellit + Straßen-Labels-Overlay
   satellite:()=>{
     const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'});
     return sat;
   },
   // Voyager (detailreichste Straßenkarte)
-  street:()=>L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',TILE_OPT),
+  street:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Luftbild: Satellit + Straßennamen-Labels
   hybrid:()=>L.layerGroup([
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'}),
-    L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,noWrap:true,opacity:1,subdomains:'abcd'}),
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,noWrap:true,opacity:1,subdomains:'abcd'}),
   ]),
 };
 // ─── OSM OVERPASS ─────────────────────────────────────────

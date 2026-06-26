@@ -1,6 +1,6 @@
 // Rojball Service Worker — Caching + Push Notifications
-const CACHE='rojball-v6';
-const TILE_CACHE='rojball-tiles-v1';
+const CACHE='rojball-v7';
+const TILE_CACHE='rojball-tiles-v2';
 const PRECACHE=[
   '/',
   '/index.html',
@@ -39,13 +39,10 @@ self.addEventListener('fetch',e=>{
   if(isTile(url)){
     e.respondWith(
       caches.open(TILE_CACHE).then(tc=>
-        tc.match(e.request).then(cached=>{
-          if(cached)return cached;
-          return fetch(e.request).then(res=>{
-            if(res.ok){tc.put(e.request,res.clone());}
-            return res;
-          }).catch(()=>cached||new Response('',{status:503}));
-        })
+        fetch(e.request).then(res=>{
+          if(res&&res.ok){tc.put(e.request,res.clone());}
+          return res;
+        }).catch(()=>tc.match(e.request))
       )
     );
     return;
