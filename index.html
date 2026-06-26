@@ -359,6 +359,8 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 .btn:active{transform:scale(.97)}
 .btn.pr{background:var(--green);color:#000}
 .btn.pr:hover{opacity:.88}
+.btn.ev{background:var(--blue);color:#000}
+.btn.ev:hover{opacity:.88}
 .btn.gh{background:var(--bg4);border:1px solid var(--bdr2);color:var(--text)}
 .btn.ic{flex:0;padding:11px 13px}
 .btn.dn{background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red)}
@@ -1535,7 +1537,7 @@ let userLat=52.518,userLng=13.398;
 function haversine(lat1,lng1,lat2,lng2){const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 function distLabel(km){return km<1?(Math.round(km*1000)+"m"):(km.toFixed(1)+" km");}
 // nearbySpots defined in OSM block below
-const TILE_OPT={subdomains:'abcd',maxNativeZoom:20,maxZoom:21,noWrap:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
+const TILE_OPT={subdomains:'abcd',maxZoom:19,noWrap:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
 const TILES={
   // Dark mit Straßen/Stadt-Labels
   dark:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
@@ -1543,15 +1545,15 @@ const TILES={
   light:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Satellit + Straßen-Labels-Overlay
   satellite:()=>{
-    const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,noWrap:true,attribution:'Tiles © Esri'});
+    const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'});
     return sat;
   },
   // Voyager (detailreichste Straßenkarte)
   street:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Luftbild: Satellit + Straßennamen-Labels
   hybrid:()=>L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,noWrap:true,attribution:'Tiles © Esri'}),
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxNativeZoom:20,maxZoom:21,noWrap:true,opacity:1,subdomains:'abcd'}),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'}),
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,noWrap:true,opacity:1,subdomains:'abcd'}),
   ]),
 };
 // ─── OSM OVERPASS ─────────────────────────────────────────
@@ -1976,7 +1978,7 @@ function openOsmSpot(s,fromList){
       <div id="osmprob-${s.id}">${osmProbSectionHTML(s)}</div>
     </div>
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn pr" style="flex:2" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn ev" style="flex:2" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
       <button class="btn gh" style="flex:2" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:12px">
@@ -2235,7 +2237,6 @@ function initMap(clat,clng){
     worldCopyJump:false,
     maxBounds:[[-85,-180],[85,180]],
     maxBoundsViscosity:1.0,
-    maxZoom:21,
   }).setView([clat,clng],14);
   curTile=TILES.dark();curTile.addTo(MAP);
   // TWA-Fix: Map-Groesse nach Init korrigieren, sonst grauer Hintergrund
@@ -2680,7 +2681,7 @@ function openSpot(s){
     </div>
     <div id="osmprob-${s.id}">${osmProbSectionHTML(s)}</div>
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn pr" style="flex:2" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn ev" style="flex:2" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
       <button class="btn gh" style="flex:2" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:12px">
