@@ -2237,6 +2237,9 @@ function initMap(clat,clng){
     maxBoundsViscosity:1.0,
   }).setView([clat,clng],14);
   curTile=TILES.dark();curTile.addTo(MAP);
+  // TWA-Fix: Map-Groesse nach Init korrigieren, sonst grauer Hintergrund
+  setTimeout(function(){if(MAP)MAP.invalidateSize();},200);
+  setTimeout(function(){if(MAP)MAP.invalidateSize();},600);
   // Tile error handler - show offline notice
   curTile.on('tileerror',function(){
     if(navigator.onLine===false && !document.getElementById('offline-notice')){
