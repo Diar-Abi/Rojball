@@ -1538,20 +1538,20 @@ function distLabel(km){return km<1?(Math.round(km*1000)+"m"):(km.toFixed(1)+" km
 const TILE_OPT={subdomains:'abcd',maxZoom:19,noWrap:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false};
 const TILES={
   // Dark mit Straßen/Stadt-Labels
-  dark:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
+  dark:()=>L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Hell mit Labels
-  light:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',TILE_OPT),
+  light:()=>L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Satellit + Straßen-Labels-Overlay
   satellite:()=>{
     const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'});
     return sat;
   },
   // Voyager (detailreichste Straßenkarte)
-  street:()=>L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',TILE_OPT),
+  street:()=>L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',TILE_OPT),
   // Luftbild: Satellit + Straßennamen-Labels
   hybrid:()=>L.layerGroup([
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,noWrap:true,attribution:'Tiles © Esri'}),
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,noWrap:true,opacity:1,subdomains:'abcd'}),
+    L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,noWrap:true,opacity:1,subdomains:'abcd'}),
   ]),
 };
 // ─── OSM OVERPASS ─────────────────────────────────────────
