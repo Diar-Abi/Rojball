@@ -359,8 +359,6 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 .btn:active{transform:scale(.97)}
 .btn.pr{background:var(--green);color:#000}
 .btn.pr:hover{opacity:.88}
-.btn.ev{background:var(--blue);color:#000}
-.btn.ev:hover{opacity:.88}
 .btn.gh{background:var(--bg4);border:1px solid var(--bdr2);color:var(--text)}
 .btn.ic{flex:0;padding:11px 13px}
 .btn.dn{background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red)}
@@ -1978,7 +1976,7 @@ function openOsmSpot(s,fromList){
       <div id="osmprob-${s.id}">${osmProbSectionHTML(s)}</div>
     </div>
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn ev" style="flex:2" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn pr" style="flex:2" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
       <button class="btn gh" style="flex:2" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:12px">
@@ -2681,7 +2679,7 @@ function openSpot(s){
     </div>
     <div id="osmprob-${s.id}">${osmProbSectionHTML(s)}</div>
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn ev" style="flex:2" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn pr" style="flex:2" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
       <button class="btn gh" style="flex:2" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:12px">
@@ -4518,7 +4516,7 @@ function impressumHTML(){
   <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:12px">
     <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:10px">Angaben gemäß § 5 DDG</div>
     <p style="margin-bottom:10px">
-      <b style="color:var(--text)">Rojball</b><br>
+      <b style="color:var(--text)">Diar Jamal</b><br>
       c/o Adressgeber #2106<br>
       An der Alten Ziegelei 38<br>
       48157 Münster
@@ -4531,7 +4529,7 @@ function impressumHTML(){
 
   <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:12px">
     <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Verantwortlich für den Inhalt</div>
-    <p style="margin-bottom:0">Rojball<br>c/o Adressgeber #2106, An der Alten Ziegelei 38, 48157 Münster</p>
+    <p style="margin-bottom:0">Diar Jamal<br>c/o Adressgeber #2106, An der Alten Ziegelei 38, 48157 Münster</p>
   </div>
 
   <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:12px">
