@@ -930,6 +930,24 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 <div id="osm-loader"><i class="ti ti-loader-2"></i> <span id="osm-loader-txt">Echte Plätze werden geladen...</span></div>
 
 <script>
+// localStorage Safe-Shim: verhindert App-Absturz, wenn Storage blockiert ist (Private Mode / SecurityError)
+(function(){
+  var ok=false;
+  try{var t='__ls_test__';window.localStorage.setItem(t,'1');window.localStorage.removeItem(t);ok=true;}catch(e){ok=false;}
+  if(!ok){
+    var mem={};
+    var shim={
+      getItem:function(k){return Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null;},
+      setItem:function(k,v){mem[k]=String(v);},
+      removeItem:function(k){delete mem[k];},
+      clear:function(){mem={};},
+      key:function(i){return Object.keys(mem)[i]||null;},
+      get length(){return Object.keys(mem).length;}
+    };
+    try{Object.defineProperty(window,'localStorage',{value:shim,configurable:true,writable:false});}
+    catch(e){try{window.localStorage=shim;}catch(e2){}}
+  }
+})();
 // AbortSignal.timeout polyfill
 if(!AbortSignal.timeout){AbortSignal.timeout=function(ms){const c=new AbortController();setTimeout(()=>c.abort(new DOMException('TimeoutError','TimeoutError')),ms);return c.signal;};}
 // Event registry — must be first
