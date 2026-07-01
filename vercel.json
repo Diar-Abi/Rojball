@@ -1,13 +1,14 @@
 {
   "headers": [
     {
-      "source": "/(.*)",
-      "headers": [{
       "source": "/.well-known/assetlinks.json",
       "headers": [
         {"key": "Content-Type", "value": "application/json"}
       ]
     },
+    {
+      "source": "/(.*)",
+      "headers": [
         {"key": "X-Frame-Options", "value": "DENY"},
         {"key": "X-Content-Type-Options", "value": "nosniff"},
         {"key": "X-XSS-Protection", "value": "1; mode=block"},
