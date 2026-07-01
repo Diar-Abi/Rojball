@@ -1,8 +1,0 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "de.rojball.twa",
-    "sha256_cert_fingerprints": ["C0:AE:DE:48:48:A9:79:D7:E6:A6:37:15:3D:87:D4:B1:86:6B:12:FB:32:98:96:60:BF:19:48:D8:7B:7E:E5:C6"]
-  }
-}]
