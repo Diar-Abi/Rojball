@@ -1166,8 +1166,8 @@ function probSectionHTML(sid){
     </div>
     <div class="prob-track"><div class="prob-fill ${cls}" style="width:${pct}%"></div></div>
     <div class="prob-vote-row">
-      <button class="pvote yes${v.myVote==='yes'?' voted':''}" onclick="castVote(${sid},'yes')"><i class="ti ti-check"></i> Konnte spielen ✅</button>
-      <button class="pvote no${v.myVote==='no'?' voted':''}" onclick="castVote(${sid},'no')"><i class="ti ti-x"></i> Nicht spielbar ❌</button>
+      <button class="pvote yes${v.myVote==='yes'?' voted':''}" onclick="castVote('${sid}','yes')"><i class="ti ti-check"></i> Konnte spielen ✅</button>
+      <button class="pvote no${v.myVote==='no'?' voted':''}" onclick="castVote('${sid}','no')"><i class="ti ti-x"></i> Nicht spielbar ❌</button>
     </div>
   </div>`;
 }
@@ -1975,7 +1975,7 @@ function openOsmSpot(s,fromList){
           <div class="ssport"><span>${s.sport}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="fav-btn${favActive?' active':''}" id="fav-btn-${s.id}" onclick="toggleFav(${s.id},this)" style="position:static;background:var(--bg4);border:1px solid var(--bdr2);color:${favActive?'#ff4060':'var(--text2)'}"><i class="ti ti-heart${favActive?'-filled':''}"></i></button>
+          <button class="fav-btn${favActive?' active':''}" id="fav-btn-${s.id}" onclick="toggleFav('${s.id}',this)" style="position:static;background:var(--bg4);border:1px solid var(--bdr2);color:${favActive?'#ff4060':'var(--text2)'}"><i class="ti ti-heart${favActive?'-filled':''}"></i></button>
           <span class="sbdg ${s.st==='free'?'fr':s.st==='busy'?'bs':'wn'}">
             <span class="dot ${s.st==='free'?'g':s.st==='busy'?'r':'y'}"></span>${s.status}
           </span>
@@ -2010,7 +2010,7 @@ function openOsmSpot(s,fromList){
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn pr" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
-      <button class="btn gh" onclick="openSpotStatusForm(${s.id})"><i class="ti ti-traffic-lights"></i> Status melden</button>
+      <button class="btn gh" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn gh" onclick="showRouteToSpot(${s.lat},${s.lng},'${displayName(s)}')"><i class="ti ti-route"></i> Route hierhin</button>
@@ -2439,7 +2439,7 @@ function onSearch(q){
   }).slice(0,12);
   const el=SPOTS.flatMap(s=>s.events).filter(e=>e.title.toLowerCase().includes(q.toLowerCase()));
   let html='';
-  if(allS.length)html+=`<div class="scat">Sportplätze</div>`+allS.map(s=>`<div class="sri" onclick="searchSpot(${s.id})"><i class="ti ti-ball-football" style="color:var(--green)"></i><div><div style="font-weight:700">${displayName(s)}${s.ver?' ✓':''}</div><div style="font-size:11px;color:var(--text2)">${s.sport} · ${s.status||'Öffentlich'}</div></div></div>`).join('');
+  if(allS.length)html+=`<div class="scat">Sportplätze</div>`+allS.map(s=>`<div class="sri" onclick="searchSpot('${s.id}')"><i class="ti ti-ball-football" style="color:var(--green)"></i><div><div style="font-weight:700">${displayName(s)}${s.ver?' ✓':''}</div><div style="font-size:11px;color:var(--text2)">${s.sport} · ${s.status||'Öffentlich'}</div></div></div>`).join('');
   if(el.length)html+=`<div class="scat">Events</div>`+el.map(e=>`<div class="sri" onclick="closeSearch()"><i class="ti ti-calendar" style="color:var(--yellow)"></i><div><div style="font-weight:700">${e.title}</div><div style="font-size:11px;color:var(--text2)">${e.time}</div></div></div>`).join('');
   if(html){res.innerHTML=html;res.classList.add('show');}
   stimer=setTimeout(async()=>{
@@ -2672,8 +2672,8 @@ function openSpot(s){
     </div>
     ${probSectionHTML(s.id)}
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn pr" onclick="openAtSpot(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
-      <button class="btn gh" onclick="openSpotStatusForm(${s.id})"><i class="ti ti-traffic-lights"></i> Status melden</button>
+      <button class="btn pr" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn gh" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn gh" onclick="openRating()"><i class="ti ti-star"></i> Bewerten</button>
@@ -2722,7 +2722,7 @@ function openSpotStatusForm(id){
       <label>Details (optional)</label>
       <textarea class="fin" id="status-detail" rows="2" placeholder="z.B. Training von 18–20 Uhr, danach frei · Muss rübergeklettert werden · Tor fehlt ..." style="resize:vertical;min-height:60px">${s.statusNote||''}</textarea>
     </div>
-    <button class="btn pr" style="width:100%;margin-top:8px" onclick="submitSpotStatus(${s.id})"><i class="ti ti-check"></i> Status speichern</button>`;
+    <button class="btn pr" style="width:100%;margin-top:8px" onclick="submitSpotStatus('${s.id}')"><i class="ti ti-check"></i> Status speichern</button>`;
 }
 function submitSpotStatus(id){
   const s=allSpots().find(x=>x.id==id);if(!s)return;
