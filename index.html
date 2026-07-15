@@ -151,34 +151,46 @@ document.addEventListener('DOMContentLoaded',function(){initSupabase();checkExis
   // Service Worker for offline caching
   if('serviceWorker' in navigator){
     var sw=`
-const CACHE='rojball-v3';
+const CACHE='rojball-v4';
 const PRECACHE=[
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css',
   'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
 ];
-self.addEventListener('install',e=>e.waitUntil(
-  caches.open(CACHE).then(c=>c.addAll(PRECACHE).catch(()=>{}))
-));
+self.addEventListener('install',e=>{
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PRECACHE).catch(()=>{})));
+});
 self.addEventListener('activate',e=>e.waitUntil(
-  caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+  Promise.all([
+    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),
+    self.clients.claim()
+  ])
 ));
 self.addEventListener('fetch',e=>{
   var url=e.request.url;
   // Skip non-GET, Overpass, Nominatim, weather (always fresh)
   if(e.request.method!=='GET')return;
   if(/overpass|nominatim|open-meteo|osrm/.test(url))return;
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      if(cached)return cached;
-      return fetch(e.request).then(res=>{
-        if(res.ok&&(url.includes('cdn.jsdelivr')||url.includes('fonts.googleapis')||url.includes('cartocdn'))){
+  var isCriticalLib=url.includes('cdn.jsdelivr')||url.includes('fonts.googleapis')||url.includes('cartocdn');
+  if(isCriticalLib){
+    // Network-first für Kernbibliotheken (Leaflet, Icons) — verhindert dauerhaft kaputten Cache
+    e.respondWith(
+      fetch(e.request).then(res=>{
+        if(res.ok){
           var clone=res.clone();
           caches.open(CACHE).then(c=>c.put(e.request,clone));
         }
         return res;
-      }).catch(()=>cached||new Response('Offline',{status:503}));
+      }).catch(()=>caches.match(e.request).then(c=>c||new Response('Offline',{status:503})))
+    );
+    return;
+  }
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
+      if(cached)return cached;
+      return fetch(e.request).then(res=>res).catch(()=>new Response('Offline',{status:503}));
     })
   );
 });
