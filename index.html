@@ -1141,7 +1141,7 @@ function loadVotes(sid){
 }
 function saveVotes(sid,v){safeLSSet('roj_votes_'+sid,JSON.stringify(v));}
 function calcProb(sid){
-  const s=SPOTS.find(x=>x.id===sid);if(!s)return{pct:0,cls:'low',confirms:0,type:'public'};
+  const s=allSpots().find(x=>x.id===sid||x.id==sid);if(!s)return{pct:0,cls:'low',confirms:0,type:'public'};
   const type=getSpotType(s);
   var base=SPOT_TYPES[type].base;
   // Tageszeit-Anpassung (beleuchtete Plätze verlieren abends/nachts kaum etwas)
