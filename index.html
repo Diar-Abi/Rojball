@@ -19,7 +19,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://rojball.de/og.png">
-<link rel="manifest" href="/manifest.json" id="roj-manifest">
+<link rel="manifest" id="roj-manifest">
 <link rel="apple-touch-icon" id="roj-apple-icon">
 <link rel="icon" id="roj-favicon" type="image/png">
 <title>Rojball</title>
@@ -97,7 +97,7 @@ function initSupabase(){
     SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
   }
 }
-document.addEventListener('DOMContentLoaded',function(){initSupabase();checkExistingSession();});
+document.addEventListener('DOMContentLoaded',initSupabase);
 </script>
 
 <!-- PWA Setup: Manifest + App Icon -->
@@ -146,59 +146,40 @@ document.addEventListener('DOMContentLoaded',function(){initSupabase();checkExis
   var favicon=document.getElementById('roj-favicon');
   if(favicon&&icon192)favicon.href=icon192;
 
-  // PWA manifest: static /manifest.json is linked directly in <head>, no JS injection needed.
+  // Set PWA manifest
+  var manifest={
+    name:'Rojball — Street Sports Finder',
+    short_name:'Rojball',
+    description:'Finde Sportplätze, organisiere Spiele und triff Spieler in deiner Nähe.',
+    start_url:'.',
+    display:'standalone',
+    orientation:'portrait-primary',
+    background_color:'#080810',
+    theme_color:'#080810',
+    lang:'de',
+    categories:['sports','social'],
+    icons:[
+      {src:icon192||'',sizes:'192x192',type:'image/png',purpose:'any maskable'},
+      {src:icon512||'',sizes:'512x512',type:'image/png',purpose:'any maskable'},
+    ].filter(i=>i.src),
+    shortcuts:[
+      {name:'Plätze finden',url:'.',icons:[{src:icon192||'',sizes:'192x192'}]},
+    ]
+  };
+  try{
+    var blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var el=document.getElementById('roj-manifest');
+    if(el)el.href=url;
+  }catch(e){}
 
-  // Service Worker for offline caching
+  // Service Worker for offline caching + push notifications
+  // Muss eine echte Datei sein (nicht Blob), sonst funktioniert Push-Subscription
+  // nach Browser-Neustart nicht mehr — die sw.js liegt neben index.html im Root.
   if('serviceWorker' in navigator){
-    var sw=`
-const CACHE='rojball-v4';
-const PRECACHE=[
-  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
-  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css',
-  'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
-];
-self.addEventListener('install',e=>{
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PRECACHE).catch(()=>{})));
-});
-self.addEventListener('activate',e=>e.waitUntil(
-  Promise.all([
-    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),
-    self.clients.claim()
-  ])
-));
-self.addEventListener('fetch',e=>{
-  var url=e.request.url;
-  // Skip non-GET, Overpass, Nominatim, weather (always fresh)
-  if(e.request.method!=='GET')return;
-  if(/overpass|nominatim|open-meteo|osrm/.test(url))return;
-  var isCriticalLib=url.includes('cdn.jsdelivr')||url.includes('fonts.googleapis')||url.includes('cartocdn');
-  if(isCriticalLib){
-    // Network-first für Kernbibliotheken (Leaflet, Icons) — verhindert dauerhaft kaputten Cache
-    e.respondWith(
-      fetch(e.request).then(res=>{
-        if(res.ok){
-          var clone=res.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,clone));
-        }
-        return res;
-      }).catch(()=>caches.match(e.request).then(c=>c||new Response('Offline',{status:503})))
-    );
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      if(cached)return cached;
-      return fetch(e.request).then(res=>res).catch(()=>new Response('Offline',{status:503}));
-    })
-  );
-});
-`;
     try{
-      var swBlob=new Blob([sw],{type:'application/javascript'});
-      var swUrl=URL.createObjectURL(swBlob);
-      navigator.serviceWorker.register(swUrl).then(function(reg){
+      navigator.serviceWorker.register('/sw.js').then(function(reg){
+        window._swReg=reg;
         reg.addEventListener('updatefound',function(){
           var newSW=reg.installing;
           if(newSW)newSW.addEventListener('statechange',function(){
@@ -554,7 +535,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 
 /* TOAST */
 .toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:12px;right:12px;transform:translateY(16px);background:rgba(5,5,12,.97);border:1.5px solid var(--bdr2);border-radius:14px;padding:13px 18px;font-size:14px;font-weight:700;color:var(--text);z-index:1000;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.6);text-align:center;backdrop-filter:blur(14px)}
-.toast.show{opacity:1;transform:translateY(0)}
+.toast.show{opacity:1;transform:translateY(0);pointer-events:auto;cursor:pointer}
 .toast.ok{border-color:var(--green);color:#fff;background:rgba(0,230,118,.14);box-shadow:0 8px 32px rgba(0,230,118,.2)}
 .toast.er{border-color:var(--red);color:#fff;background:rgba(255,71,87,.12);box-shadow:0 8px 32px rgba(255,71,87,.2)}
 
@@ -777,29 +758,6 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
-/* ─── COACH MARKS (Erklär-Tooltips) ─── */
-.coach-bub{position:fixed;z-index:2010;max-width:250px;background:linear-gradient(155deg,#10241a,#0c1610);border:1px solid rgba(0,230,118,.35);border-radius:16px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.55),0 0 0 1px rgba(0,230,118,.06);opacity:0;transform:translateY(6px) scale(.96);transition:opacity .22s ease,transform .22s cubic-bezier(.34,1.4,.64,1);pointer-events:none}
-.coach-bub.show{opacity:1;transform:translateY(0) scale(1);pointer-events:all}
-.coach-backdrop{position:fixed;inset:0;z-index:2000;background:rgba(4,6,8,.55);opacity:0;pointer-events:none;transition:opacity .22s ease}
-.coach-backdrop.show{opacity:1;pointer-events:all}
-.coach-bub-title{font-size:13px;font-weight:800;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:6px}
-.coach-bub-text{font-size:12.5px;line-height:1.45;color:var(--text2);margin-bottom:8px}
-.coach-bub-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.coach-bub-more{font-size:12px;font-weight:700;color:var(--green);cursor:pointer;white-space:nowrap}
-.coach-bub-close{font-size:11px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:8px;transition:background .15s}
-.coach-bub-close:active{background:rgba(255,255,255,.08)}
-.coach-arrow{position:fixed;z-index:2010;width:14px;height:14px;background:#0c1610;border:1px solid rgba(0,230,118,.35);transform:rotate(45deg);opacity:0;transition:opacity .22s ease}
-.coach-arrow.show{opacity:1}
-.coach-arrow.up{border-right:none;border-bottom:none}
-.coach-arrow.down{border-left:none;border-top:none}
-.coach-detail-ov{position:fixed;inset:0;z-index:2100;background:rgba(4,6,8,.72);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s ease}
-.coach-detail-ov.show{opacity:1;pointer-events:all}
-.coach-detail-card{width:100%;max-width:480px;background:var(--bg2);border-radius:22px 22px 0 0;padding:24px 22px calc(24px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:75vh;overflow-y:auto}
-.coach-detail-ov.show .coach-detail-card{transform:translateY(0)}
-.coach-detail-icon{font-size:32px;margin-bottom:10px}
-.coach-detail-title{font-size:19px;font-weight:800;color:var(--text);margin-bottom:10px}
-.coach-detail-text{font-size:14px;line-height:1.6;color:var(--text2);margin-bottom:20px;white-space:pre-line}
-.coach-detail-close{width:100%;padding:13px;border-radius:14px;border:none;background:var(--green);color:#000;font-weight:800;font-size:14.5px;cursor:pointer}
 </style>
 </head>
 <body onload="setTimeout(checkExistingSession,100)">
@@ -868,35 +826,17 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 
 <!-- APP -->
 <div id="app">
-<div class="coach-backdrop" id="coach-backdrop"></div>
-<div class="coach-arrow" id="coach-arrow"></div>
-<div class="coach-bub" id="coach-bub">
-  <div class="coach-bub-title" id="coach-bub-title"></div>
-  <div class="coach-bub-text" id="coach-bub-text"></div>
-  <div class="coach-bub-row">
-    <span class="coach-bub-more" id="coach-bub-more" onclick="ctipDetail()">Mehr erfahren ›</span>
-    <span class="coach-bub-close" onclick="ctipClose()">Verstanden</span>
-  </div>
-</div>
-<div class="coach-detail-ov" id="coach-detail-ov" onclick="if(event.target===this)ctipDetailClose()">
-  <div class="coach-detail-card">
-    <div class="coach-detail-icon" id="coach-detail-icon"></div>
-    <div class="coach-detail-title" id="coach-detail-title"></div>
-    <div class="coach-detail-text" id="coach-detail-text"></div>
-    <button class="coach-detail-close" onclick="ctipDetailClose()">Alles klar</button>
-  </div>
-</div>
   <div id="map"></div>
 
   <div class="topbar">
     <div class="logo">ROJ<em>BALL</em></div>
     <div class="top-right">
-      <div class="wbtn" onclick="ctip('wbtn',this,function(){openD('weather')})">
+      <div class="wbtn" onclick="openD('weather')">
         <span style="font-size:20px">⛅</span>
         <span style="font-size:15px;font-weight:700">19°C</span>
         <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i>
       </div>
-      <div class="ibtn" onclick="ctip('notifbtn',this,function(){openD('notif')})">
+      <div class="ibtn" onclick="openD('notif')">
         <i class="ti ti-bell"></i>
         <div class="nbadge" id="nbadge" style="display:none">0</div>
       </div>
@@ -927,9 +867,9 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
   </div>
 
   <div class="nav-pills">
-    <div class="npill act" id="pill-0" onclick="ctip('spiele',this,function(){openD('spiele')})"><i class="ti ti-ball-football"></i> <span>Spiele</span></div>
-    <div class="npill" id="pill-1" onclick="ctip('turniere',this,function(){openD('turniere')})"><i class="ti ti-trophy"></i> <span>Turniere</span></div>
-    <div class="npill" id="pill-2" onclick="ctip('plaetze',this,function(){openD('plaetze')})"><i class="ti ti-map-pin"></i> <span>Plätze</span></div>
+    <div class="npill act" id="pill-0" onclick="openD('spiele')"><i class="ti ti-ball-football"></i> <span>Spiele</span></div>
+    <div class="npill" id="pill-1" onclick="openD('turniere')"><i class="ti ti-trophy"></i> <span>Turniere</span></div>
+    <div class="npill" id="pill-2" onclick="openD('plaetze')"><i class="ti ti-map-pin"></i> <span>Plätze</span></div>
   </div>
 
   <div class="map-ctrls">
@@ -937,12 +877,12 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
       <button class="zbtn" onclick="MAP&&MAP.zoomIn()">+</button>
       <button class="zbtn" onclick="MAP&&MAP.zoomOut()">−</button>
     </div>
-    <div class="mcbtn" id="locbtn" onclick="ctip('locbtn',this,function(){locateMe()})"><i class="ti ti-navigation"></i></div>
+    <div class="mcbtn" id="locbtn" onclick="locateMe()"><i class="ti ti-navigation"></i></div>
     <div class="lwrap">
-      <div class="mcbtn" onclick="ctip('layerbtn',this,function(){toggleDD('ldd')})"><i class="ti ti-layers-subtract"></i></div>
+      <div class="mcbtn" onclick="toggleDD('ldd')"><i class="ti ti-layers-subtract"></i></div>
     </div>
     <div class="lwrap">
-      <div class="mcbtn" id="filterbtn" onclick="ctip('filterbtn',this,function(){toggleDD('filter-dd')})" title="Filter"><i class="ti ti-adjustments-horizontal"></i></div>
+      <div class="mcbtn" id="filterbtn" onclick="toggleDD('filter-dd')" title="Filter"><i class="ti ti-adjustments-horizontal"></i></div>
       <div class="ldd" id="filter-dd">
         <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--text3);padding:6px 10px 4px;text-transform:uppercase">Sport</div>
         <div class="dopt act" onclick="setFilter('all',this)"><i class="ti ti-ball-football"></i> <span id='filt-alle'>Alle</span></div>
@@ -987,13 +927,13 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
     <span class="pin-cancel" onclick="cancelPin()" id="pinbanner-cancel">✕ Abbrechen</span>
   </div>
 
-  <button class="fab" id="fab" onclick="ctip('fab',this,function(){startPin()})"><i class="ti ti-plus"></i></button>
+  <button class="fab" id="fab" onclick="startPin()"><i class="ti ti-plus"></i></button>
 
   <div class="bnav">
-    <button class="bni act" onclick="var _e=this;ctip('navkarte',this,function(){setNav(_e,'map')})"><i class="ti ti-map-2"></i><span>Karte</span></button>
-    <button class="bni" onclick="ctip('plaetze',this,function(){openD('plaetze')})"><i class="ti ti-map-pin"></i><span>Plätze</span></button>
-    <button class="bni" onclick="ctip('spiele',this,function(){openD('spiele')})"><i class="ti ti-ball-football"></i><span>Spiele</span></button>
-    <button class="bni" onclick="var _e=this;ctip('navprofil',this,function(){setNav(_e,'profil')})"><i class="ti ti-user"></i><span>Profil</span></button>
+    <button class="bni act" onclick="setNav(this,'map')"><i class="ti ti-map-2"></i><span>Karte</span></button>
+    <button class="bni" onclick="openD('plaetze')"><i class="ti ti-map-pin"></i><span>Plätze</span></button>
+    <button class="bni" onclick="openD('spiele')"><i class="ti ti-ball-football"></i><span>Spiele</span></button>
+    <button class="bni" onclick="setNav(this,'profil')"><i class="ti ti-user"></i><span>Profil</span></button>
   </div>
 
   <div class="overlay" id="overlay" onclick="closeD()"></div>
@@ -1024,85 +964,28 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--bg);color
 <script>
 // AbortSignal.timeout polyfill
 if(!AbortSignal.timeout){AbortSignal.timeout=function(ms){const c=new AbortController();setTimeout(()=>c.abort(new DOMException('TimeoutError','TimeoutError')),ms);return c.signal;};}
-// Safe localStorage wrappers — verhindern Crash bei SecurityError (Private Mode, blockierte Cookies, In-App-Browser)
-function safeLSGet(key){try{return localStorage.getItem(key);}catch(e){return null;}}
-function safeLSSet(key,val){try{localStorage.setItem(key,val);return true;}catch(e){return false;}}
-function safeLSRemove(key){try{localStorage.removeItem(key);return true;}catch(e){return false;}}
-
-// ─── COACH MARKS (Erklär-Tooltips beim ersten Antippen) ───
-const COACH_TIPS={
-  spiele:{icon:'⚽',title:'Spiele',short:'Hier siehst du alle Pickup-Games in deiner Nähe. Tritt einem Spiel bei oder erstelle selbst eins.',full:'Im Tab "Spiele" findest du spontane Pickup-Games von anderen Spielern in deiner Umgebung, sortiert nach Entfernung.\n\nTippe auf ein Spiel um Details zu sehen — Uhrzeit, Ort, wie viele Spieler schon dabei sind. Mit "Ich bin dabei!" trittst du direkt bei.\n\nÜber den grünen Plus-Button unten rechts kannst du selbst ein Spiel erstellen.'},
-  turniere:{icon:'🏆',title:'Turniere',short:'Offizielle Events und Turniere in deiner Stadt — von Spielern für Spieler organisiert.',full:'Turniere sind größere, geplante Events — z.B. ein Street-Soccer-Cup oder ein wiederkehrendes Vereinstraining.\n\nJeder kann ein Turnier erstellen und festlegen wie viele Teams mitmachen können. Andere Nutzer können sich anmelden und sehen alle Details wie Datum, Ort und Teilnehmerzahl.'},
-  plaetze:{icon:'📍',title:'Plätze',short:'Über 43.000 echte Sportplätze auf der Karte — Bolzplätze, Basketballkörbe und mehr.',full:'Rojball zeigt dir alle Sportflächen in deiner Nähe direkt aus OpenStreetMap-Daten — Bolzplätze, Basketballkörbe, Volleyballfelder und mehr.\n\nTippe auf einen Platz für Details: Adresse, Route dorthin, und ob gerade gespielt wird. Du kannst auch selbst melden ob ein Platz frei, besetzt oder aktuell nicht bespielbar ist — das hilft allen anderen Spielern.\n\nFehlt ein Platz? Du kannst über "Platz eintragen" neue Spots hinzufügen.'},
-  fab:{icon:'➕',title:'Neuer Eintrag',short:'Erstelle ein Spiel, ein Turnier, trage einen neuen Platz ein oder melde den Status eines Platzes.',full:'Der Plus-Button ist deine zentrale Anlaufstelle zum Mitmachen:\n\n• Spontanspiel — schnell ein Pickup-Game erstellen\n• Turnier — ein offizielles Event organisieren\n• Platz eintragen — einen fehlenden Sportplatz melden\n• Status melden — sagen ob ein Platz frei, besetzt oder gesperrt ist\n\nTippe einfach auf den Button und wähl aus was du machen willst.'},
-  locbtn:{icon:'📍',title:'Mein Standort',short:'Zentriert die Karte auf deinen aktuellen Standort und lädt Plätze in deiner Nähe.',full:'Mit diesem Button springt die Karte zu deinem aktuellen Standort (GPS) und lädt automatisch alle Sportplätze in deiner Umgebung.\n\nFalls Rojball keinen Zugriff auf deinen Standort hat, wirst du einmalig gefragt, das freizugeben. Ohne GPS kannst du die Karte auch manuell verschieben und zoomen.'},
-  filterbtn:{icon:'🎛️',title:'Filter',short:'Zeig nur bestimmte Sportarten an — Fußball, Basketball, Volleyball, Tennis und mehr.',full:'Über den Filter kannst du die Kartenansicht auf bestimmte Sportarten eingrenzen, z.B. nur Basketballkörbe anzeigen.\n\nDu kannst auch nach "Nutzer-Plätzen" filtern — das sind Plätze, die von der Community selbst eingetragen wurden und noch nicht in den offiziellen OpenStreetMap-Daten stehen.'},
-  wbtn:{icon:'⛅',title:'Wetter',short:'Aktuelles Wetter an deinem Standort — praktisch um zu checken ob Spielwetter ist.',full:'Der Wetter-Button zeigt dir die aktuelle Temperatur und tippst du drauf, öffnet sich eine ausführliche Vorhersage: stündlich für heute und die nächsten 7 Tage.\n\nRojball bewertet das Wetter auch direkt für dich — z.B. Warnung bei Gewitter oder Hinweis "Gutes Spielwetter!" bei Sonnenschein.'},
-  notifbtn:{icon:'🔔',title:'Benachrichtigungen',short:'Hier siehst du Updates zu Spielen, Bewertungen und Nachrichten von anderen Spielern.',full:'In den Benachrichtigungen bekommst du Updates zu allem was dich betrifft: neue Spiele in deiner Nähe, wenn dich jemand bewertet hat, Team-Nachrichten und Status-Änderungen bei Plätzen die du gespeichert hast.\n\nDu kannst in den Einstellungen festlegen, welche Arten von Benachrichtigungen du erhalten möchtest.'},
-  layerbtn:{icon:'🗺️',title:'Kartenansicht',short:'Wechsle zwischen dunkler, heller, Satelliten- und Straßenansicht der Karte.',full:'Über diesen Button änderst du wie die Karte aussieht — z.B. Satellitenbild statt normaler Straßenkarte. Praktisch um Plätze anhand von Luftbildern besser einzuschätzen.'},
-  fabSpiel:{icon:'⚽',title:'Spontanspiel',short:'Erstelle in wenigen Sekunden ein Pickup-Game — wähl Ort, Sportart und Uhrzeit.',full:'Mit einem Spontanspiel lädst du andere Spieler in deiner Nähe zu einer schnellen Runde ein. Wähl einen Ort auf der Karte, die Sportart, maximale Spielerzahl und wann es losgeht.\n\nDein Spiel erscheint dann für andere Nutzer in der Spiele-Liste, sortiert nach Entfernung.'},
-  fabTurnier:{icon:'🏆',title:'Turnier erstellen',short:'Organisiere ein größeres, offizielles Event mit mehreren Teams.',full:'Ein Turnier ist größer angelegt als ein Spontanspiel — du legst fest wie viele Teams teilnehmen können, Datum und Ort. Andere Nutzer können sich mit ihrem Team anmelden.\n\nGut geeignet für regelmäßige Events wie einen Street-Soccer-Cup.'},
-  fabPlatz:{icon:'📍',title:'Platz eintragen',short:'Fehlt ein Sportplatz auf der Karte? Trag ihn hier neu ein, damit ihn alle sehen.',full:'Falls du einen Bolzplatz, Basketballkorb oder ein anderes Sportfeld kennst, das noch nicht auf der Karte zu finden ist, kannst du ihn hier eintragen.\n\nGib Name, Adresse und Sportart an — der Platz erscheint danach für alle Nutzer auf der Karte.'},
-  fabStatus:{icon:'🚦',title:'Status melden',short:'Sag anderen ob ein Platz gerade frei, besetzt oder aktuell nicht bespielbar ist.',full:'Mit einer Status-Meldung hilfst du der Community: melde ob ein Platz gerade frei, besetzt oder z.B. wegen Bauarbeiten nicht bespielbar ist.\n\nDiese Infos werden live für alle anderen Nutzer angezeigt, die sich den gleichen Platz ansehen.'},
-  navkarte:{icon:'🗺️',title:'Karte',short:'Die Hauptansicht — zeigt alle Plätze und Spiele in deiner Nähe direkt auf der Karte.',full:'Die Karte ist der Ausgangspunkt in Rojball. Hier siehst du alle Sportplätze und aktiven Spiele in deiner Umgebung auf einen Blick — mit Symbolen für Sportart und Status.\n\nÜber die Buttons oben links kannst du zoomen, deinen Standort finden, die Kartenansicht wechseln und filtern.'},
-  navprofil:{icon:'👤',title:'Profil',short:'Dein Profil mit Statistiken, gespeicherten Plätzen, Einstellungen und mehr.',full:'In deinem Profil findest du deinen Spielernamen, deine Statistiken (Spiele, Tore), gespeicherte Favoriten-Plätze sowie den Zugang zu Einstellungen wie Sprache, Design und Benachrichtigungen.\n\nHier kannst du dich auch abmelden oder dein Profilbild ändern.'},
-};
-function ctip(key,anchorEl,actionFn){
-  if(safeLSGet('roj_coach_'+key)){if(actionFn)actionFn();return;}
-  var data=COACH_TIPS[key];
-  if(!data||!anchorEl){if(actionFn)actionFn();return;}
-  window._ctipKey=key;
-  window._ctipAction=actionFn||null;
-  var bub=document.getElementById('coach-bub');
-  var arrow=document.getElementById('coach-arrow');
-  var backdrop=document.getElementById('coach-backdrop');
-  document.getElementById('coach-bub-title').innerHTML=data.icon+' '+data.title;
-  document.getElementById('coach-bub-text').textContent=data.short;
-  backdrop.classList.add('show');
-  setTimeout(function(){
-    var r=anchorEl.getBoundingClientRect();
-    var bubW=250,vw=window.innerWidth,vh=window.innerHeight;
-    var cx=r.left+r.width/2;
-    var placeAbove=r.top>vh*0.55;
-    bub.style.left=Math.max(12,Math.min(vw-bubW-12,cx-bubW/2))+'px';
-    if(placeAbove){
-      bub.style.bottom=(vh-r.top+14)+'px';bub.style.top='';
-      arrow.className='coach-arrow down';
-      arrow.style.top=(r.top-8)+'px';arrow.style.bottom='';
-    } else {
-      bub.style.top=(r.bottom+14)+'px';bub.style.bottom='';
-      arrow.className='coach-arrow up';
-      arrow.style.top=(r.bottom+7)+'px';arrow.style.bottom='';
-    }
-    arrow.style.left=(cx-7)+'px';
-    bub.classList.add('show');
-    setTimeout(function(){arrow.classList.add('show');},60);
-  },100);
-}
-function ctipClose(){
-  if(window._ctipKey)safeLSSet('roj_coach_'+window._ctipKey,'1');
-  document.getElementById('coach-bub').classList.remove('show');
-  document.getElementById('coach-arrow').classList.remove('show');
-  document.getElementById('coach-backdrop').classList.remove('show');
-  var action=window._ctipAction;
-  window._ctipKey=null;window._ctipAction=null;
-  if(action)setTimeout(action,80);
-}
-function ctipDetail(){
-  var key=window._ctipKey;
-  var data=COACH_TIPS[key];
-  if(!data)return;
-  document.getElementById('coach-bub').classList.remove('show');
-  document.getElementById('coach-arrow').classList.remove('show');
-  document.getElementById('coach-detail-icon').textContent=data.icon;
-  document.getElementById('coach-detail-title').textContent=data.title;
-  document.getElementById('coach-detail-text').textContent=data.full;
-  document.getElementById('coach-detail-ov').classList.add('show');
-}
-function ctipDetailClose(){
-  document.getElementById('coach-detail-ov').classList.remove('show');
-  ctipClose();
-}
+// Safe localStorage wrappers — verhindert SecurityError-Crash in Safari Private Mode
+// und In-App-Browsern (Instagram/TikTok), wo localStorage blockiert sein kann.
+function safeLSGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function safeLSSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function safeLSRemove(k){try{localStorage.removeItem(k);}catch(e){}}
+// Prüft ob localStorage wirklich nutzbar ist (nicht nur vorhanden) und warnt den Nutzer,
+// falls Einstellungen/Favoriten in dieser Session nicht gespeichert werden können.
+window._lsBlocked=false;
+(function testLS(){
+  try{
+    var t='__roj_ls_test__';
+    localStorage.setItem(t,'1');
+    localStorage.removeItem(t);
+  }catch(e){
+    window._lsBlocked=true;
+    setTimeout(function(){
+      if(typeof showToast==='function'){
+        showToast('⚠️ Speicherzugriff blockiert — nichts wird gespeichert. Tipp: Seite im normalen Browser (Safari/Chrome) statt In-App-Browser öffnen, bzw. Privates Surfen deaktivieren.','er',7000);
+      }
+    },1200);
+  }
+})();
 // Event registry — must be first
 const EVENT_REG={};
 
@@ -1141,7 +1024,7 @@ function loadVotes(sid){
 }
 function saveVotes(sid,v){safeLSSet('roj_votes_'+sid,JSON.stringify(v));}
 function calcProb(sid){
-  const s=allSpots().find(x=>x.id===sid||x.id==sid);if(!s)return{pct:0,cls:'low',confirms:0,type:'public'};
+  const s=SPOTS.find(x=>x.id===sid);if(!s)return{pct:0,cls:'low',confirms:0,type:'public'};
   const type=getSpotType(s);
   var base=SPOT_TYPES[type].base;
   // Tageszeit-Anpassung (beleuchtete Plätze verlieren abends/nachts kaum etwas)
@@ -1178,8 +1061,8 @@ function probSectionHTML(sid){
     </div>
     <div class="prob-track"><div class="prob-fill ${cls}" style="width:${pct}%"></div></div>
     <div class="prob-vote-row">
-      <button class="pvote yes${v.myVote==='yes'?' voted':''}" onclick="castVote('${sid}','yes')"><i class="ti ti-check"></i> Konnte spielen ✅</button>
-      <button class="pvote no${v.myVote==='no'?' voted':''}" onclick="castVote('${sid}','no')"><i class="ti ti-x"></i> Nicht spielbar ❌</button>
+      <button class="pvote yes${v.myVote==='yes'?' voted':''}" onclick="castVote(${sid},'yes')"><i class="ti ti-check"></i> Konnte spielen ✅</button>
+      <button class="pvote no${v.myVote==='no'?' voted':''}" onclick="castVote(${sid},'no')"><i class="ti ti-x"></i> Nicht spielbar ❌</button>
     </div>
   </div>`;
 }
@@ -1312,14 +1195,11 @@ const P={
   photo:safeLSGet('roj_photo')||null,
   city:safeLSGet('roj_city')||'',
   sport:safeLSGet('roj_sport')||'Fußball',
-  email:safeLSGet('roj_email')||'',
 };
 function saveP(){
-  safeLSSet('roj_name',P.name);safeLSSet('roj_nc',P.changes);safeLSSet('roj_nl',P.locked);safeLSSet('roj_emoji',P.emoji);if(P.photo)safeLSSet('roj_photo',P.photo);safeLSSet('roj_city',P.city);safeLSSet('roj_sport',P.sport);if(P.email)safeLSSet('roj_email',P.email);
+  safeLSSet('roj_name',P.name);safeLSSet('roj_nc',P.changes);safeLSSet('roj_nl',P.locked);safeLSSet('roj_emoji',P.emoji);if(P.photo)safeLSSet('roj_photo',P.photo);safeLSSet('roj_city',P.city);safeLSSet('roj_sport',P.sport);
   if(SB&&P.uid){
-    var prof={id:P.uid,username:P.name,city:P.city||null,emoji:P.emoji||'⚽',sport:P.sport||'Fußball'};
-    if(P.email)prof.email=P.email;
-    SB.from('profiles').upsert(prof,{onConflict:'id'}).then(function(r){if(r.error)console.error('Profile save:',r.error.message);});
+    SB.from('profiles').upsert({id:P.uid,username:P.name,city:P.city||null,emoji:P.emoji||'⚽',sport:P.sport||'Fußball'},{onConflict:'id'}).then(function(r){if(r.error)console.error('Profile save:',r.error.message);});
   }
 }
 function nStatus(){
@@ -1379,8 +1259,6 @@ function doEmailAuth(){
       if(btn){btn.disabled=false;btn.textContent=T('kontoErstellen')||'Konto erstellen';}
       if(res.error){err.textContent=res.error.message;return;}
       P.name=name;
-      P.email=input;
-      if(res.data&&res.data.user)P.uid=res.data.user.id;
       safeLSSet('roj_auth_method','email');
       showToast('✅ Willkommen '+name+'!','ok');
       finishAuth();
@@ -1393,7 +1271,6 @@ function doEmailAuth(){
         var meta=res.data.user.user_metadata;
         P.name=escapeHtml(meta.username||email.split('@')[0]).substring(0,20);
         P.uid=res.data.user.id;
-        P.email=res.data.user.email||email;
         safeLSSet('roj_auth_method','email');
         showToast('✅ '+P.name+'!','ok');
         finishAuth();
@@ -1451,7 +1328,7 @@ function finishAuth(){
   } else { initMap(52.518,13.398);loadTopbarWeather(52.518,13.398); }
   loadSubmittedSpots();
   updateChatBadge();
-  loadGlobalEvents(checkEventDeepLink);
+  loadGlobalEvents();
   // Supabase-Daten laden wenn eingeloggt
   if(SB&&P.uid){
     // Profil laden
@@ -1461,16 +1338,55 @@ function finishAuth(){
         if(res.data.city)P.city=res.data.city;
         if(res.data.emoji)P.emoji=res.data.emoji;
         if(res.data.sport)P.sport=res.data.sport;
+        saveP();
       }
-      saveP();
     });
     loadFavsFromDB();
     loadUserSpotsFromDB();
+    initPushSubscription();
   } else {
     // Anonym: lokale User-Spots laden
     try{userSpots=JSON.parse(safeLSGet('roj_user_spots')||'[]');}catch(e){userSpots=[];}
   }
   if(!safeLSGet('roj_dsgvo'))setTimeout(()=>document.getElementById('dsgvo').classList.add('show'),1500);
+}
+// ─── PUSH NOTIFICATIONS ─────────────────────────────────
+const VAPID_PUBLIC_KEY='BP-Eo9-rStB40sEjT172kTRwAyFog864WGnwaWOuvFTJ07zRC4LWnMwOm4S4phjN4bdjlOyy84hjIoLQ9YbqVdA';
+function urlBase64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const rawData=atob(base64);
+  const outputArray=new Uint8Array(rawData.length);
+  for(let i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);
+  return outputArray;
+}
+async function initPushSubscription(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+    if(!SB||!P.uid)return;
+    if(Notification.permission==='denied')return;
+    const reg=window._swReg||await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      if(Notification.permission!=='granted'){
+        const perm=await Notification.requestPermission();
+        if(perm!=='granted')return;
+      }
+      sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const raw=sub.toJSON();
+    await SB.from('push_subscriptions').upsert({
+      user_id:P.uid,
+      endpoint:raw.endpoint,
+      p256dh:raw.keys.p256dh,
+      auth:raw.keys.auth,
+      lat:userLat||null,
+      lng:userLng||null
+    },{onConflict:'endpoint'});
+  }catch(e){console.error('Push subscribe error:',e);}
 }
 function checkExistingSession(){
   initSupabase();
@@ -1987,7 +1903,7 @@ function openOsmSpot(s,fromList){
           <div class="ssport"><span>${s.sport}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="fav-btn${favActive?' active':''}" id="fav-btn-${s.id}" onclick="toggleFav('${s.id}',this)" style="position:static;background:var(--bg4);border:1px solid var(--bdr2);color:${favActive?'#ff4060':'var(--text2)'}"><i class="ti ti-heart${favActive?'-filled':''}"></i></button>
+          <button class="fav-btn${favActive?' active':''}" id="fav-btn-${s.id}" onclick="toggleFav(${s.id},this)" style="position:static;background:var(--bg4);border:1px solid var(--bdr2);color:${favActive?'#ff4060':'var(--text2)'}"><i class="ti ti-heart${favActive?'-filled':''}"></i></button>
           <span class="sbdg ${s.st==='free'?'fr':s.st==='busy'?'bs':'wn'}">
             <span class="dot ${s.st==='free'?'g':s.st==='busy'?'r':'y'}"></span>${s.status}
           </span>
@@ -2022,7 +1938,7 @@ function openOsmSpot(s,fromList){
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn pr" onclick="openCreateAtOsm(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
-      <button class="btn gh" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
+      <button class="btn gh" onclick="openSpotStatusForm(${s.id})"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn gh" onclick="showRouteToSpot(${s.lat},${s.lng},'${displayName(s)}')"><i class="ti ti-route"></i> Route hierhin</button>
@@ -2451,7 +2367,7 @@ function onSearch(q){
   }).slice(0,12);
   const el=SPOTS.flatMap(s=>s.events).filter(e=>e.title.toLowerCase().includes(q.toLowerCase()));
   let html='';
-  if(allS.length)html+=`<div class="scat">Sportplätze</div>`+allS.map(s=>`<div class="sri" onclick="searchSpot('${s.id}')"><i class="ti ti-ball-football" style="color:var(--green)"></i><div><div style="font-weight:700">${displayName(s)}${s.ver?' ✓':''}</div><div style="font-size:11px;color:var(--text2)">${s.sport} · ${s.status||'Öffentlich'}</div></div></div>`).join('');
+  if(allS.length)html+=`<div class="scat">Sportplätze</div>`+allS.map(s=>`<div class="sri" onclick="searchSpot(${s.id})"><i class="ti ti-ball-football" style="color:var(--green)"></i><div><div style="font-weight:700">${displayName(s)}${s.ver?' ✓':''}</div><div style="font-size:11px;color:var(--text2)">${s.sport} · ${s.status||'Öffentlich'}</div></div></div>`).join('');
   if(el.length)html+=`<div class="scat">Events</div>`+el.map(e=>`<div class="sri" onclick="closeSearch()"><i class="ti ti-calendar" style="color:var(--yellow)"></i><div><div style="font-weight:700">${e.title}</div><div style="font-size:11px;color:var(--text2)">${e.time}</div></div></div>`).join('');
   if(html){res.innerHTML=html;res.classList.add('show');}
   stimer=setTimeout(async()=>{
@@ -2684,8 +2600,8 @@ function openSpot(s){
     </div>
     ${probSectionHTML(s.id)}
     <div class="brow" style="margin-bottom:8px">
-      <button class="btn pr" onclick="openAtSpot('${s.id}')"><i class="ti ti-plus"></i> Event erstellen</button>
-      <button class="btn gh" onclick="openSpotStatusForm('${s.id}')"><i class="ti ti-traffic-lights"></i> Status melden</button>
+      <button class="btn pr" onclick="openAtSpot(${s.id})"><i class="ti ti-plus"></i> Event erstellen</button>
+      <button class="btn gh" onclick="openSpotStatusForm(${s.id})"><i class="ti ti-traffic-lights"></i> Status melden</button>
     </div>
     <div class="brow" style="margin-bottom:8px">
       <button class="btn gh" onclick="openRating()"><i class="ti ti-star"></i> Bewerten</button>
@@ -2734,7 +2650,7 @@ function openSpotStatusForm(id){
       <label>Details (optional)</label>
       <textarea class="fin" id="status-detail" rows="2" placeholder="z.B. Training von 18–20 Uhr, danach frei · Muss rübergeklettert werden · Tor fehlt ..." style="resize:vertical;min-height:60px">${s.statusNote||''}</textarea>
     </div>
-    <button class="btn pr" style="width:100%;margin-top:8px" onclick="submitSpotStatus('${s.id}')"><i class="ti ti-check"></i> Status speichern</button>`;
+    <button class="btn pr" style="width:100%;margin-top:8px" onclick="submitSpotStatus(${s.id})"><i class="ti ti-check"></i> Status speichern</button>`;
 }
 function submitSpotStatus(id){
   const s=allSpots().find(x=>x.id==id);if(!s)return;
@@ -2786,7 +2702,7 @@ function eCard(e,dist){
       `+(loadJoined().includes(e.id)?'<button class="btn" style="flex:1;padding:11px 8px;border:1px solid var(--green);border-radius:var(--r2);font-size:13px;font-weight:800;background:var(--green-dim);color:var(--green);cursor:default;display:flex;align-items:center;justify-content:center;gap:6px;font-family:Barlow,sans-serif" disabled><i class="ti ti-check"></i> Dabei!</button>':'<button class="btn pr" data-eid="'+e.id+'" onclick="joinEv(this)"><i class="ti ti-check"></i> Ich bin dabei!</button>')+`
       <button class="btn gh" onclick="openChat('${e.id}')"><i class="ti ti-message-circle"></i>${cc>0?` ${cc}`:' Chat'}</button>
       <button class="btn ic gh" onclick="uploadEvPhoto('${e.id}')"><i class="ti ti-camera"></i></button>
-      <button class="btn ic gh" onclick="doShare('${e.title}','${e.id}')"><i class="ti ti-share"></i></button>
+      <button class="btn ic gh" onclick="doShare('${e.title}')"><i class="ti ti-share"></i></button>
     </div>
     <input type="file" id="ef-${e.id}" accept="image/*" style="display:none" onchange="showEvPhoto('${e.id}',this)">
     <div id="ep-${e.id}"></div>
@@ -4529,10 +4445,10 @@ function createHTML(){
   return `${loc?`<div class="locbox"><i class="ti ti-map-pin"></i><div><div style="font-size:14px;font-weight:700">${loc.name}</div><div style="font-size:11px;color:var(--text2)">${loc.area||'Karte'} · <span style="color:var(--green);cursor:pointer" onclick="startPin()">${T('aendern')}</span></div></div></div>`
   :`<div class="locbox empty" onclick="startPin()"><i class="ti ti-map-pin"></i><div><div style="font-size:14px;font-weight:700;color:var(--text2)">${T('ortWaehlen')}</div><div style="font-size:11px;color:var(--text3)">${T('tippen')}</div></div><i class="ti ti-chevron-right" style="margin-left:auto;color:var(--text3)"></i></div>`}
   <div class="cgrid">
-    <div class="ctyp" onclick="var _e=this;ctip('fabSpiel',this,function(){selForm('spiel',_e)})"><div class="ci">⚽</div><div class="cn">${T('spontanspiel')}</div><div class="cs">${T('spontanspielDesc')}</div></div>
-    <div class="ctyp" onclick="var _e=this;ctip('fabTurnier',this,function(){selForm('turnier',_e)})"><div class="ci">🏆</div><div class="cn">${T('turnier')}</div><div class="cs">${T('turnierDesc')}</div></div>
-    <div class="ctyp" onclick="var _e=this;ctip('fabPlatz',this,function(){selForm('platz',_e)})"><div class="ci">📍</div><div class="cn">${T('platzEintragen')}</div><div class="cs">${T('platzEintragenDesc')}</div></div>
-    <div class="ctyp" onclick="var _e=this;ctip('fabStatus',this,function(){selForm('status',_e)})"><div class="ci">🚦</div><div class="cn">${T('statusMelden')}</div><div class="cs">${T('statusMeldenDesc')}</div></div>
+    <div class="ctyp" onclick="selForm('spiel',this)"><div class="ci">⚽</div><div class="cn">${T('spontanspiel')}</div><div class="cs">${T('spontanspielDesc')}</div></div>
+    <div class="ctyp" onclick="selForm('turnier',this)"><div class="ci">🏆</div><div class="cn">${T('turnier')}</div><div class="cs">${T('turnierDesc')}</div></div>
+    <div class="ctyp" onclick="selForm('platz',this)"><div class="ci">📍</div><div class="cn">${T('platzEintragen')}</div><div class="cs">${T('platzEintragenDesc')}</div></div>
+    <div class="ctyp" onclick="selForm('status',this)"><div class="ci">🚦</div><div class="cn">${T('statusMelden')}</div><div class="cs">${T('statusMeldenDesc')}</div></div>
   </div><div id="cform"></div>`;
 }
 function getRecOpts(){return `<div class="fld"><label>${T('wiederholen')}</label><div class="recgrid"><div class="recopt sel" onclick="selO(this,'.recopt')">${T('einmalig')}</div><div class="recopt" onclick="selO(this,'.recopt')">${T('woechentlich')}</div><div class="recopt" onclick="selO(this,'.recopt')">${T('jedenMo')}</div><div class="recopt" onclick="selO(this,'.recopt')">${T('jedenMi')}</div><div class="recopt" onclick="selO(this,'.recopt')">${T('jedenFr')}</div><div class="recopt" onclick="selO(this,'.recopt')">${T('jedenSo')}</div></div></div>`;}
@@ -4566,10 +4482,10 @@ function loadJoined(){
 function saveJoined(j){safeLSSet('roj_joined',JSON.stringify(j));}
 
 // Globale Events von Supabase laden
-function loadGlobalEvents(cb){
-  if(!SB){if(cb)cb();return;}
+function loadGlobalEvents(){
+  if(!SB)return;
   SB.from('events').select('*').order('created_at',{ascending:false}).limit(100).then(function(res){
-    if(res.error||!res.data){if(cb)cb();return;}
+    if(res.error||!res.data)return;
     var now=Date.now();
     res.data.forEach(function(ev){
       // Koordinaten validieren
@@ -4604,19 +4520,7 @@ function loadGlobalEvents(cb){
       }
     });
     renderUserEventMarkers();
-    if(cb)cb();
   });
-}
-
-// ─── EVENT DEEP-LINK (Freundeseinladung per Share-Link) ───
-function checkEventDeepLink(){
-  var params=new URLSearchParams(location.search);
-  var eid=params.get('event');
-  if(!eid)return;
-  history.replaceState(null,'',location.pathname);
-  var found=loadUserEvents().find(function(e){return e.id===eid;});
-  if(found)openUserEventDetail(eid);
-  else showToast('Event nicht gefunden oder abgelaufen','er');
 }
 
 var mapLayerVisible={plaetze:true,events:true};
@@ -4679,7 +4583,7 @@ function openUserEventDetail(eid){
   var joinBtn=joined.includes(eid)
     ?'<button class="btn" style="flex:1;padding:11px 8px;border:1px solid var(--green);border-radius:var(--r2);font-size:13px;font-weight:800;background:var(--green-dim);color:var(--green);cursor:default;display:flex;align-items:center;justify-content:center;gap:6px;font-family:Barlow,sans-serif" disabled><i class="ti ti-check"></i> Dabei!</button>'
     :'<button class="btn pr" data-eid="'+eid+'" onclick="joinEv(this)"><i class="ti ti-check"></i> Ich bin dabei!</button>';
-  var shareBtn='<button class="btn ic gh" onclick="doShare(decodeURIComponent(\'' +encodeURIComponent(e.title)+ '\'),\''+eid+'\')"><i class="ti ti-share"></i></button>';
+  var shareBtn='<button class="btn ic gh" onclick="doShare(decodeURIComponent(\'' +encodeURIComponent(e.title)+ '\'))"><i class="ti ti-share"></i></button>';
   var isCreator=(P.uid&&e.creator_id&&e.creator_id===P.uid)||(e._user&&!e.creator_id);
   var delBtn=isCreator?'<button class="btn dn" onclick="deleteUserEvent(\''+eid+'\')"><i class="ti ti-trash"></i> Löschen</button>':'';
   document.getElementById('dbody').innerHTML=
@@ -4823,7 +4727,18 @@ function submitForm(){
       note:recur!=='Einmalig'?recur:null
     }).then(function(res){
       if(res.error)console.error('Event save error:',res.error.message);
-      else loadGlobalEvents();
+      else{
+        loadGlobalEvents();
+        // Push an Nutzer in der Nähe (best effort, kein Blocker)
+        fetch('/api/send-push',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            title:'⚽ Neues Spiel in deiner Nähe',
+            body:titleVal+' · '+(selLoc.name||'Rojball'),
+            url:'/',lat:selLoc.lat,lng:selLoc.lng,radiusKm:15,excludeUserId:P.uid
+          })
+        }).catch(()=>{});
+      }
     });
   }
   renderUserEventMarkers();
@@ -4852,12 +4767,7 @@ function joinEv(btn){
   }
   showToast('✅ Du bist dabei!','ok');
 }
-function doShare(title,eventId){
-  var url=eventId?location.origin+location.pathname+'?event='+encodeURIComponent(eventId):location.href;
-  if(navigator.share){navigator.share({title:'Rojball',text:title,url:url}).catch(function(){});}
-  else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){showToast('🔗 Link kopiert!','ok');}).catch(function(){showToast('🔗 '+url,'ok');});}
-  else{showToast('🔗 '+url,'ok');}
-}
+function doShare(title){if(navigator.share)navigator.share({title:'Rojball',text:title,url:location.href});else showToast('🔗 Link kopiert!','ok');}
 function uploadEvPhoto(eid){document.getElementById('ef-'+eid)?.click();}
 function showEvPhoto(eid,input){
   if(!input.files||!input.files[0])return;
@@ -4872,7 +4782,7 @@ function showEvPhoto(eid,input){
 function selO(el,sel){var was=el.classList.contains('sel');el.parentElement.querySelectorAll('.recopt,.spopt,.stopt').forEach(x=>x.classList.remove('sel'));if(!was)el.classList.add('sel');}
 
 // LANG
-var LANGS={
+const LANGS={
   de:{flag:'🇩🇪',spiele:'Spiele',turniere:'Turniere',plaetze:'Sportplätze',teams:'Teams',karte:'Karte',ranking:'Ranking',profil:'Profil',suche:'Platz, Stadt oder Event suchen...',beitreten:'Ich bin dabei!',frei:'Frei',besetzt:'Besetzt',warnung:'Warnung',chat:'Chat',teilen:'Teilen',bewerten:'Bewerten',route:'Route hierhin',spielbar:'spielbar',bestaetigen:'Konnte spielen ✅',nichtSpielbar:'Nicht spielbar ❌',wetter:'Wetter',heute:'Heute',morgen:'Morgen',stadtRanking:'Städte-Ranking',aktiveSpiele:'aktive Spiele',meinProfil:'Mein Profil',abmelden:'Abmelden',willkommen:'Willkommen bei Rojball!',wmoKlar:'Klar',wmoUeberwiegendKlar:'Überwiegend klar',wmoTeilweiseBewolkt:'Teilweise bewölkt',wmoBewolkt:'Bewölkt',wmoNebel:'Nebel',wmoLeichterNiesel:'Leichter Nieselregen',wmoNiesel:'Nieselregen',wmoStarkerNiesel:'Starker Nieselregen',wmoLeichterRegen:'Leichter Regen',wmoMaessigerRegen:'Mäßiger Regen',wmoStarkerRegen:'Starker Regen',wmoLeichterSchnee:'Leichter Schnee',wmoSchnee:'Schnee',wmoStarkerSchnee:'Starker Schnee',wmoRegenschauer:'Regenschauer',wmoStarkeSchauer:'Starke Schauer',wmoGewitter:'Gewitter',wmoStarkesGewitter:'Starkes Gewitter',sportGewitter:'⚠️ Gewitter — Nicht spielen!',sportStarkerRegen:'🌧 Starker Regen — Schwierig',sportRegen:'🌦 Regen — Trotzdem möglich',sportSchnee:'❄️ Schnee — Vorsicht',sportKalt:'🥶 Sehr kalt — Warm anziehen!',sportHeiss:'🥵 Sehr heiß — Viel trinken!',sportGut:'✅ Gutes Spielwetter heute!',wetterLaden:'Wetter wird geladen...',wetterFehler:'Wetter konnte nicht geladen werden.',deinStandort:'Dein Standort',jetzt:'Jetzt',luftfeuchtigkeit:'Luftfeuchtigkeit',wind:'Wind',regenrisiko:'Regenrisiko',gefuehlt:'Gefühlt',uvIndex:'UV-Index',tagesHoechstTief:'Tageshöchst/Tief',niedrig:'Niedrig',mittel:'Mittel',hoch:'Hoch',sehrHoch:'Sehr hoch',extrem:'Extrem',stuendlich:'Stündlich (heute)',siebenTage:'7-Tage-Vorhersage',quelle:'Quelle',woDo:'So',weMo:'Mo',weDi:'Di',weMi:'Mi',weDo:'Do',weFr:'Fr',weSa:'Sa',meineEvents:'Meine Events',darstellung:'Darstellung',modeDunkel:'🌑 Dunkel',modeHell:'☀️ Hell',modeSystem:'📱 System',speicher:'Speicher',einstellungen:'Einstellungen',notiSpiele:'Spiele in der Nähe',notiTurniere:'Turniere',notiTeam:'Team-Nachrichten',notiStatus:'Status-Meldungen',platzEinreichen:'Platz einreichen',abmeldenBtn:'Abmelden',standortEinstellen:'Standort einstellen',lokalerSpeicher:'Lokaler Speicher (Videos/Storys)',speicherFastVoll:'⚠️ Speicher fast voll — alte Videos löschen',keineFavoriten:'Noch keine Favoriten.<br>Öffne einen Platz und tippe auf ❤️',keinePlaetze:'Keine gespeicherten Plätze gefunden.',gespeichertePlaetzeAnz:'gespeicherte Plätze',bistDuSicher:'Bist du sicher?',abbrechen:'Abbrechen',layerDunkel:'Dunkel',layerHell:'Hell',layerSat:'Satellit',layerStr:'Straße',layerHyb:'Hybrid',legendFrei:'Frei',legendBesetzt:'Besetzt',legendWarnung:'Warnung',legendOsm:'OSM-Platz',pinBanner:'Tippe auf die Karte',pinAbbrechen:'Abbrechen',filterAlle:'Alle',filterBeleuchtet:'Beleuchtet',keineSpiele:'Keine Spiele in deiner Nähe',keineSpieleHint:'Drücke auf GPS oder erstelle ein neues Spiel',neuesSpiel:'Neues Spiel erstellen',keineTurniere:'Keine Turniere in deiner Nähe',eventsHier:'Events hier',nochKeineEvents:'Noch keine Events',entfernung:'Entfernung',verfuegbarkeit:'Verfügbarkeit',plaetzeSort:'Sortieren',notifLeer:'Keine Benachrichtigungen',sportplaetzeFilter:'Entfernung,Verfügbarkeit,Beleuchtet',vor5min:'Vor 5 Min',vor1std:'Vor 1 Std',vor2std:'Vor 2 Std',vor3std:'Vor 3 Std',notiDemo1:'Spontanspiel in 500m — 5v5 Fußball, Prenzlauer Berg',notiDemo2:'BigBaller hat dich bewertet: Fairer Spieler ⭐⭐⭐⭐⭐',notiDemo3:'Street Soccer Cup — noch 5 Plätze frei!',notiDemo4:"Kevin23: 'Bringt jemand einen Ball mit?'",notiDemo5:'Neuer Platz eingetragen: Bolzplatz Neukölln',keinePlaetzeIn:'Keine Plätze in',platzEintragen:'Platz eintragen',keineNachrichten:'Noch keine Nachrichten',keineNachrichtenHello:'Noch keine Nachrichten — sag Hallo! 👋',keineSpieler:'Keine Spieler gefunden',keinBlockiert:'Keine blockierten Nutzer.',spielerSuchen:'Spieler suchen',videoPosten:'Video von diesem Platz posten',keineVideos:'Noch keine Videos',highlightLoeschen:'Dieses Highlight wird gelöscht.',videoLoeschen:'Dieses Video wird gelöscht.',ortWaehlen:'Ort auf Karte wählen',bitteName:'Bitte Name eingeben',bitteDatum:'Bitte Datum & Uhrzeit eingeben',statusGemeldet:'✅ Status gemeldet!',kmFuss:'km · ca.',minFuss:'Min. zu Fuß',spieleIn:'Spiele & Events in',keineEventsIn:'Noch keine Events in',stadtRankingLabel:'Städte-Ranking',baldVerfuegbarMsg:'Dieses Feature kommt im nächsten Update.<br>Bleib gespannt! 🚀',offline:'📵 Offline — Karte nicht verfügbar',ausgewaehlterOrt:'Ausgewählter Ort',hinzufuegen:'Hinzufügen',toreSpiel:'Tore/Spiel',assistsSpiel:'Assists/Spiel',keineMitglieder:'Keine Mitglieder eingetragen',freundeNicht:'Noch keine Freunde hinzugefügt',laesstJetzt:'Läuft jetzt',aenderbar:'änderbar',tageGesperrt:'Tage gesperrt',siebenTageGesperrt:'7 Tage gesperrt',anmelden:'Anmelden',baldVerfuegbar:'Bald verfügbar',benachrichtigungen:'Benachrichtigungen',bewertungGespeichert:'⭐ Bewertung gespeichert!',bitteOrt:'Bitte erst Ort auf Karte wählen',bitteStatus:'Bitte Status auswählen',blockiert:'blockiert',blockierte:'Blockierte Nutzer',blockierteSub:'Verwalte deine Blockierungen',chatFehler:'Fehler beim Laden des Chats',community:'Community-Richtlinien',communitySub:'Fair Play für alle',datenschutz:'Datenschutz',datenschutzSub:'Rojball Datenschutzerklärung',deineChats:'Deine Chats',dunkelAktiviert:'✅ Dunkel aktiviert!',emailNicht:'E-Mail nicht gefunden',emailUngueltig:'Bitte gültige E-Mail eingeben',entblockt:'entblockt',eventErstellen:'Event erstellen',eventGeloescht:'Event gelöscht',eventNicht:'Event nicht gefunden',favEntfernt:'Aus Favoriten entfernt',favGespeichert:'❤️ Favorit gespeichert!',favoriten:'Favoriten',folgeIch:'Folge ich',gefolgt:'✅ Du folgst ',gemeldet:'✅ Gemeldet — danke! Wir prüfen das.',gespeichertePlaetze:'Deine gespeicherten Plätze',gpsNicht:'GPS nicht verfügbar',hellAktiviert:'✅ Hell aktiviert!',highlightGeloescht:'Highlight gelöscht',highlightGespeichert:'✅ Highlight gespeichert!',highlightZuGross:'Highlight zu groß',impressum:'Impressum',impressumSub:'Angaben gemäß § 5 TMG',keinInternet:'📵 Kein Internet',keinStandort:'Kein Standort',keineSpieleNaehe:'Keine Spiele in der Nähe',keineTurniereNaehe:'Keine Turniere in der Nähe',kontoErstellen:'Konto erstellen',loginErfolgreich:'Login erfolgreich!',nachrichten:'Nachrichten',naechstesUpdate:'Kommt mit dem nächsten Update',nameFehlt:'Name fehlt',nameGespeichert:'✅ Name gespeichert!',neuUngelesen:'Neu & Ungelesen',nichtGefolgt:'Nicht mehr gefolgt',nichtSpielbarGemeldet:'❌ Nicht spielbar gemeldet!',nicknameKurz:'Nickname muss mindestens 2 Zeichen haben',nutzung:'Nutzungsbedingungen',nutzungSub:'AGB',osmFehler:'⚠️ OSM-Fehler: ',osmPlatz:'OSM-Platz',passwortKurz:'Passwort muss mindestens 6 Zeichen haben',personen:'Personen',plaetzeGeladen:'Plätze geladen',plaetzeInKm:'Plätze in',platzEingetragen:'✅ Platz eingetragen!',profilbildGespeichert:'📸 Profilbild gespeichert!',speicherVoll:'❌ Speicher voll — Videos löschen',speicherVollAlt:'⚠️ Speicher voll — alte Videos gelöscht',spielbarGemeldet:'✅ Spielbar gemeldet!',spieleSub:'Sortiert nach Nähe',sportplaetze:'Sportplätze',standortFehler:'Standort nicht verfügbar',standortGefunden:'📍 Standort gefunden!',standortLaden:'📍 Standort gefunden — lade echte Plätze...',statusAktualisiert:'✅ Status aktualisiert!',statusMelden:'Status melden',storyGeloescht:'Story gelöscht',storyGepostet:'✅ Story gepostet! Sichtbar für 24h',storyZuGross:'Story zu groß',turniereSub:'Sortiert nach Nähe',videoGepostet:'✅ Video gepostet!',videoVerarbeitung:'Video wird verarbeitet...',videoZuGross:'Video zu groß für Speicher',wetterNicht:'Wetter nicht verfügbar',wiederOnline:'✅ Wieder online',spontanspiel:'Spontanspiel',turnier:'Turnier',spontanspielDesc:'Spieler finden & losspielen',turnierDesc:'Offizielles Event',platzEintragenDesc:'Neuen Spot melden',statusMeldenDesc:'Frei / Besetzt / Warnung',sportart:'Sportart',datumUhrzeit:'Datum & Uhrzeit',maxSpieler:'Max. Spieler',maxTeams:'Max. Teams',altersbeschraenkung:'Altersbeschränkung',keinLimit:'Kein Limit',jugend:'Jugend',wiederholen:'Wiederholen',einmalig:'Einmalig',woechentlich:'Wöchentlich',jedenMo:'Jeden Mo',jedenMi:'Jeden Mi',jedenFr:'Jeden Fr',jedenSo:'Jeden So',nicknameLabel:'Nickname (leer = Anonym)',turniername:'Turniername',details:'Details',tippen:'Tippe hier oder auf die Karte',aendern:'Ändern',melden:'Melden',eintragen:'Eintragen',vereinstraining:'Vereinstraining',namePH:'z.B. Bolzplatz Nordkiez',adresse:'Adresse',strassePH:'Straße, Stadt',sFussball:'Fußball',sBasketball:'Basketball',sVolleyball:'Volleyball',sTennis:'Tennis',sHockey:'Hockey',sMulti:'Multisport'},
   en:{flag:'🇬🇧',spiele:'Games',turniere:'Tournaments',plaetze:'Pitches',teams:'Teams',karte:'Map',ranking:'Ranking',profil:'Profile',suche:'Search pitch, city or event...',beitreten:"I'm in!",frei:'Free',besetzt:'Occupied',warnung:'Warning',chat:'Chat',teilen:'Share',bewerten:'Rate',route:'Get directions',spielbar:'playable',bestaetigen:'Could play ✅',nichtSpielbar:'Not playable ❌',wetter:'Weather',heute:'Today',morgen:'Tomorrow',stadtRanking:'City Ranking',aktiveSpiele:'active games',meinProfil:'My Profile',abmelden:'Sign out',willkommen:'Welcome to Rojball!',wmoKlar:'Clear',wmoUeberwiegendKlar:'Mainly clear',wmoTeilweiseBewolkt:'Partly cloudy',wmoBewolkt:'Cloudy',wmoNebel:'Fog',wmoLeichterNiesel:'Light drizzle',wmoNiesel:'Drizzle',wmoStarkerNiesel:'Heavy drizzle',wmoLeichterRegen:'Light rain',wmoMaessigerRegen:'Moderate rain',wmoStarkerRegen:'Heavy rain',wmoLeichterSchnee:'Light snow',wmoSchnee:'Snow',wmoStarkerSchnee:'Heavy snow',wmoRegenschauer:'Rain showers',wmoStarkeSchauer:'Heavy showers',wmoGewitter:'Thunderstorm',wmoStarkesGewitter:'Heavy thunderstorm',sportGewitter:"⚠️ Thunderstorm — Don't play!",sportStarkerRegen:'🌧 Heavy rain — Difficult',sportRegen:'🌦 Rain — Still possible',sportSchnee:'❄️ Snow — Be careful',sportKalt:'🥶 Very cold — Dress warmly!',sportHeiss:'🥵 Very hot — Stay hydrated!',sportGut:'✅ Great weather for sports!',wetterLaden:'Loading weather...',wetterFehler:'Could not load weather.',deinStandort:'Your location',jetzt:'Now',luftfeuchtigkeit:'Humidity',wind:'Wind',regenrisiko:'Rain chance',gefuehlt:'Feels like',uvIndex:'UV index',tagesHoechstTief:'High / Low',niedrig:'Low',mittel:'Medium',hoch:'High',sehrHoch:'Very high',extrem:'Extreme',stuendlich:'Hourly (today)',siebenTage:'7-day forecast',quelle:'Source',woDo:'Sun',weMo:'Mon',weDi:'Tue',weMi:'Wed',weDo:'Thu',weFr:'Fri',weSa:'Sat',meineEvents:'My Events',darstellung:'Appearance',modeDunkel:'🌑 Dark',modeHell:'☀️ Light',modeSystem:'📱 System',speicher:'Storage',einstellungen:'Settings',notiSpiele:'Games nearby',notiTurniere:'Tournaments',notiTeam:'Team messages',notiStatus:'Status updates',platzEinreichen:'Submit a pitch',abmeldenBtn:'Sign out',standortEinstellen:'Set location',lokalerSpeicher:'Local storage (videos/stories)',speicherFastVoll:'⚠️ Storage almost full',keineFavoriten:'No favourites yet.<br>Open a pitch and tap ❤️',keinePlaetze:'No saved pitches found.',gespeichertePlaetzeAnz:'saved pitches',bistDuSicher:'Are you sure?',abbrechen:'Cancel',layerDunkel:'Dark',layerHell:'Light',layerSat:'Satellite',layerStr:'Street',layerHyb:'Hybrid',legendFrei:'Free',legendBesetzt:'Occupied',legendWarnung:'Warning',legendOsm:'OSM Pitch',pinBanner:'Tap on the map',pinAbbrechen:'Cancel',filterAlle:'All',filterBeleuchtet:'Lit',keineSpiele:'No games near you',keineSpieleHint:'Press GPS or create a new game',neuesSpiel:'Create new game',keineTurniere:'No tournaments near you',eventsHier:'Events here',nochKeineEvents:'No events yet',entfernung:'Distance',verfuegbarkeit:'Availability',plaetzeSort:'Sort',notifLeer:'No notifications',sportplaetzeFilter:'Distance,Availability,Lit',vor5min:'5 min ago',vor1std:'1 hour ago',vor2std:'2 hours ago',vor3std:'3 hours ago',notiDemo1:'Pick-up game 500m away — 5v5 Football, Prenzlauer Berg',notiDemo2:'BigBaller rated you: Fair player ⭐⭐⭐⭐⭐',notiDemo3:'Street Soccer Cup — 5 spots left!',notiDemo4:"Kevin23: 'Is anyone bringing a ball?'",notiDemo5:'New pitch added: Bolzplatz Neukölln',keinePlaetzeIn:'No pitches within',platzEintragen:'Add pitch',keineNachrichten:'No messages yet',keineNachrichtenHello:'No messages yet — say hello! 👋',keineSpieler:'No players found',keinBlockiert:'No blocked users.',spielerSuchen:'Search players',videoPosten:'Post a video of this pitch',keineVideos:'No videos yet',highlightLoeschen:'This highlight will be deleted.',videoLoeschen:'This video will be deleted.',ortWaehlen:'Choose location on map',bitteName:'Please enter a name',bitteDatum:'Please enter date & time',statusGemeldet:'✅ Status reported!',kmFuss:'km · approx.',minFuss:'min on foot',spieleIn:'Games & Events in',keineEventsIn:'No events yet in',stadtRankingLabel:'City Ranking',baldVerfuegbarMsg:'This feature is coming in the next update.<br>Stay tuned! 🚀',offline:'📵 Offline — Map not available',ausgewaehlterOrt:'Selected location',hinzufuegen:'Add',toreSpiel:'Goals/Game',assistsSpiel:'Assists/Game',keineMitglieder:'No members added',freundeNicht:'No friends added yet',laesstJetzt:'Live now',aenderbar:'change(s) remaining',tageGesperrt:'days locked',siebenTageGesperrt:'7 days locked',anmelden:'Sign in',baldVerfuegbar:'Coming soon',benachrichtigungen:'Notifications',bewertungGespeichert:'⭐ Rating saved!',bitteOrt:'Please select a location on the map first',bitteStatus:'Please select a status',blockiert:'blocked',blockierte:'Blocked users',blockierteSub:'Manage your blocks',chatFehler:'Error loading chat',community:'Community guidelines',communitySub:'Fair play for everyone',datenschutz:'Privacy',datenschutzSub:'Rojball Privacy Policy',deineChats:'Your chats',dunkelAktiviert:'✅ Dark mode on!',emailNicht:'Email not found',emailUngueltig:'Please enter a valid email',entblockt:'unblocked',eventErstellen:'Create event',eventGeloescht:'Event deleted',eventNicht:'Event not found',favEntfernt:'Removed from favourites',favGespeichert:'❤️ Saved to favourites!',favoriten:'Favourites',folgeIch:'Following',gefolgt:'✅ You follow ',gemeldet:'✅ Reported — thanks!',gespeichertePlaetze:'Your saved pitches',gpsNicht:'GPS not available',hellAktiviert:'✅ Light mode on!',highlightGeloescht:'Highlight deleted',highlightGespeichert:'✅ Highlight saved!',highlightZuGross:'Highlight too large',impressum:'Imprint',impressumSub:'Legal notice',keinInternet:'📵 No internet',keinStandort:'No location',keineSpieleNaehe:'No games nearby',keineTurniereNaehe:'No tournaments nearby',kontoErstellen:'Create account',loginErfolgreich:'Login successful!',nachrichten:'Messages',naechstesUpdate:'Coming in the next update',nameFehlt:'Name missing',nameGespeichert:'✅ Name saved!',neuUngelesen:'New & Unread',nichtGefolgt:'Unfollowed',nichtSpielbarGemeldet:'❌ Reported as not playable!',nicknameKurz:'Nickname must be at least 2 characters',nutzung:'Terms of use',nutzungSub:'Terms',osmFehler:'⚠️ OSM error: ',osmPlatz:'OSM Pitch',passwortKurz:'Password must be at least 6 characters',personen:'people',plaetzeGeladen:'pitches loaded',plaetzeInKm:'pitches within',platzEingetragen:'✅ Pitch added!',profilbildGespeichert:'📸 Profile photo saved!',speicherVoll:'❌ Storage full — delete videos',speicherVollAlt:'⚠️ Storage full — old videos deleted',spielbarGemeldet:'✅ Reported as playable!',spieleSub:'Sorted by proximity',sportplaetze:'Pitches',standortFehler:'Location unavailable',standortGefunden:'📍 Location found!',standortLaden:'📍 Location found — loading pitches...',statusAktualisiert:'✅ Status updated!',statusMelden:'Report status',storyGeloescht:'Story deleted',storyGepostet:'✅ Story posted! Visible for 24h',storyZuGross:'Story too large',turniereSub:'Sorted by proximity',videoGepostet:'✅ Video posted!',videoVerarbeitung:'Processing video...',videoZuGross:'Video too large',wetterNicht:'Weather unavailable',wiederOnline:'✅ Back online',spontanspiel:'Pick-up Game',turnier:'Tournament',spontanspielDesc:'Find players & play',turnierDesc:'Official event',platzEintragenDesc:'Report new spot',statusMeldenDesc:'Free / Occupied / Warning',sportart:'Sport',datumUhrzeit:'Date & Time',maxSpieler:'Max. players',maxTeams:'Max. teams',altersbeschraenkung:'Age restriction',keinLimit:'No limit',jugend:'Youth',wiederholen:'Repeat',einmalig:'Once',woechentlich:'Weekly',jedenMo:'Every Mon',jedenMi:'Every Wed',jedenFr:'Every Fri',jedenSo:'Every Sun',nicknameLabel:'Nickname (empty = Anonymous)',turniername:'Tournament name',details:'Details',tippen:'Tap here or on the map',aendern:'Change',melden:'Report',eintragen:'Submit',vereinstraining:'Club training',namePH:'e.g. Kick-about Park',adresse:'Address',strassePH:'Street, City',sFussball:'Football',sBasketball:'Basketball',sVolleyball:'Volleyball',sTennis:'Tennis',sHockey:'Hockey',sMulti:'Multi-sport'},
   tr:{flag:'🇹🇷',spiele:'Maçlar',turniere:'Turnuvalar',plaetze:'Sahalar',teams:'Takımlar',karte:'Harita',ranking:'Sıralama',profil:'Profil',suche:'Saha, şehir veya etkinlik ara...',beitreten:'Katılıyorum!',frei:'Boş',besetzt:'Dolu',warnung:'Uyarı',chat:'Sohbet',teilen:'Paylaş',bewerten:'Değerlendirme',route:'Yol tarifi',spielbar:'oynanabilir',bestaetigen:'Oynayabildim ✅',nichtSpielbar:'Oynanamaz ❌',wetter:'Hava',heute:'Bugün',morgen:'Yarın',stadtRanking:'Şehir Sıralaması',aktiveSpiele:'aktif maç',meinProfil:'Profilim',abmelden:'Çıkış yap',willkommen:"Rojball'a hoş geldin!",wmoKlar:'Açık',wmoUeberwiegendKlar:'Çoğunlukla açık',wmoTeilweiseBewolkt:'Parçalı bulutlu',wmoBewolkt:'Bulutlu',wmoNebel:'Sis',wmoLeichterNiesel:'Hafif çisenti',wmoNiesel:'Çisenti',wmoStarkerNiesel:'Yoğun çisenti',wmoLeichterRegen:'Hafif yağmur',wmoMaessigerRegen:'Orta yağmur',wmoStarkerRegen:'Yoğun yağmur',wmoLeichterSchnee:'Hafif kar',wmoSchnee:'Kar',wmoStarkerSchnee:'Yoğun kar',wmoRegenschauer:'Sağanak',wmoStarkeSchauer:'Şiddetli sağanak',wmoGewitter:'Fırtına',wmoStarkesGewitter:'Şiddetli fırtına',sportGewitter:'⚠️ Fırtına — Oynamayın!',sportStarkerRegen:'🌧 Şiddetli yağmur — Zor',sportRegen:'🌦 Yağmur — Yine de mümkün',sportSchnee:'❄️ Kar — Dikkatli ol',sportKalt:'🥶 Çok soğuk — Sıcak giy!',sportHeiss:'🥵 Çok sıcak — Bol su için!',sportGut:'✅ Harika spor havası!',wetterLaden:'Hava yükleniyor...',wetterFehler:'Hava durumu yüklenemedi.',deinStandort:'Konumun',jetzt:'Şimdi',luftfeuchtigkeit:'Nem',wind:'Rüzgar',regenrisiko:'Yağmur riski',gefuehlt:'Hissedilen',uvIndex:'UV endeksi',tagesHoechstTief:'En yüksek/düşük',niedrig:'Düşük',mittel:'Orta',hoch:'Yüksek',sehrHoch:'Çok yüksek',extrem:'Aşırı',stuendlich:'Saatlik (bugün)',siebenTage:'7 günlük tahmin',quelle:'Kaynak',woDo:'Paz',weMo:'Pzt',weDi:'Sal',weMi:'Çar',weDo:'Per',weFr:'Cum',weSa:'Cmt',meineEvents:'Etkinliklerim',darstellung:'Görünüm',modeDunkel:'🌑 Koyu',modeHell:'☀️ Açık',modeSystem:'📱 Sistem',speicher:'Depolama',einstellungen:'Ayarlar',notiSpiele:'Yakındaki maçlar',notiTurniere:'Turnuvalar',notiTeam:'Takım mesajları',notiStatus:'Durum güncellemeleri',platzEinreichen:'Saha ekle',abmeldenBtn:'Çıkış yap',standortEinstellen:'Konum ayarla',lokalerSpeicher:'Yerel depolama (videolar/hikayeler)',speicherFastVoll:'⚠️ Depolama neredeyse dolu',keineFavoriten:'Henüz favori yok.<br>Bir saha aç ve ❤️ ye dokun',keinePlaetze:'Kayıtlı saha bulunamadı.',gespeichertePlaetzeAnz:'kayıtlı saha',bistDuSicher:'Emin misin?',abbrechen:'İptal',layerDunkel:'Koyu',layerHell:'Açık',layerSat:'Uydu',layerStr:'Sokak',layerHyb:'Hibrit',legendFrei:'Boş',legendBesetzt:'Dolu',legendWarnung:'Uyarı',legendOsm:'OSM Sahası',pinBanner:'Haritaya dokun',pinAbbrechen:'İptal',filterAlle:'Tümü',filterBeleuchtet:'Aydınlatmalı',keineSpiele:'Yakınında maç yok',keineSpieleHint:'GPS\'e bas veya yeni maç oluştur',neuesSpiel:'Yeni maç oluştur',keineTurniere:'Yakınında turnuva yok',eventsHier:'Buradaki etkinlikler',nochKeineEvents:'Henüz etkinlik yok',entfernung:'Mesafe',verfuegbarkeit:'Uygunluk',plaetzeSort:'Sırala',notifLeer:'Bildirim yok',sportplaetzeFilter:'Mesafe,Uygunluk,Aydınlatmalı',vor5min:'5 dk önce',vor1std:'1 saat önce',vor2std:'2 saat önce',vor3std:'3 saat önce',notiDemo1:'500m mesafede anlık maç — 5v5 Futbol',notiDemo2:'BigBaller seni değerlendirdi: Adil oyuncu ⭐⭐⭐⭐⭐',notiDemo3:'Street Soccer Cup — 5 yer kaldı!',notiDemo4:"Kevin23: 'Biri top getirecek mi?'",notiDemo5:'Yeni saha eklendi: Bolzplatz Neukölln',keinePlaetzeIn:'km içinde saha yok',platzEintragen:'Saha ekle',keineNachrichten:'Henüz mesaj yok',keineNachrichtenHello:'Henüz mesaj yok — merhaba de! 👋',keineSpieler:'Oyuncu bulunamadı',keinBlockiert:'Engellenen kullanıcı yok.',spielerSuchen:'Oyuncu ara',videoPosten:'Bu sahadan video paylaş',keineVideos:'Henüz video yok',highlightLoeschen:'Bu öne çıkan silinecek.',videoLoeschen:'Bu video silinecek.',ortWaehlen:'Haritada konum seç',bitteName:'Lütfen isim girin',bitteDatum:'Lütfen tarih ve saat girin',statusGemeldet:'✅ Durum bildirildi!',kmFuss:'km · yaklaşık',minFuss:'dak. yürüyüş',spieleIn:'Maçlar & Etkinlikler:',keineEventsIn:'Henüz etkinlik yok:',stadtRankingLabel:'Şehir Sıralaması',baldVerfuegbarMsg:'Bu özellik bir sonraki güncellemede geliyor.<br>Takipte kal! 🚀',offline:'📵 Çevrimdışı — Harita kullanılamıyor',ausgewaehlterOrt:'Seçilen konum',hinzufuegen:'Ekle',toreSpiel:'Gol/Maç',assistsSpiel:'Asist/Maç',keineMitglieder:'Üye girilmedi',freundeNicht:'Henüz arkadaş eklenmedi',laesstJetzt:'Şu an yayında',aenderbar:'değişiklik hakkı',tageGesperrt:'gün kilitli',siebenTageGesperrt:'7 gün kilitli',anmelden:'Giriş yap',baldVerfuegbar:'Yakında',benachrichtigungen:'Bildirimler',bewertungGespeichert:'⭐ Değerlendirme kaydedildi!',bitteOrt:'Önce haritada konum seçin',bitteStatus:'Lütfen durum seçin',blockiert:'engellendi',blockierte:'Engellenen kullanıcılar',blockierteSub:'Engellemeleri yönet',chatFehler:'Sohbet yüklenemedi',community:'Topluluk kuralları',communitySub:'Herkes için fair play',datenschutz:'Gizlilik',datenschutzSub:'Rojball Gizlilik Politikası',deineChats:'Sohbetler',dunkelAktiviert:'✅ Koyu mod!',emailNicht:'E-posta bulunamadı',emailUngueltig:'Geçerli bir e-posta girin',entblockt:'engel kaldırıldı',eventErstellen:'Etkinlik oluştur',eventGeloescht:'Etkinlik silindi',eventNicht:'Etkinlik bulunamadı',favEntfernt:'Favorilerden kaldırıldı',favGespeichert:'❤️ Favorilere eklendi!',favoriten:'Favoriler',folgeIch:'Takip ettiklerim',gefolgt:'✅ Takip ediyorsun: ',gemeldet:'✅ Bildirildi — teşekkürler!',gespeichertePlaetze:'Kayıtlı sahalar',gpsNicht:'GPS kullanılamıyor',hellAktiviert:'✅ Açık mod!',highlightGeloescht:'Öne çıkan silindi',highlightGespeichert:'✅ Öne çıkan kaydedildi!',highlightZuGross:'Öne çıkan çok büyük',impressum:'Künye',impressumSub:'Yasal bilgiler',keinInternet:'📵 İnternet yok',keinStandort:'Konum yok',keineSpieleNaehe:'Yakında maç yok',keineTurniereNaehe:'Yakında turnuva yok',kontoErstellen:'Hesap oluştur',loginErfolgreich:'Giriş başarılı!',nachrichten:'Mesajlar',naechstesUpdate:'Sonraki güncellemede',nameFehlt:'İsim eksik',nameGespeichert:'✅ İsim kaydedildi!',neuUngelesen:'Yeni & Okunmamış',nichtGefolgt:'Takipten çıkıldı',nichtSpielbarGemeldet:'❌ Oynanamaz bildirildi!',nicknameKurz:'Kullanıcı adı en az 2 karakter',nutzung:'Kullanım şartları',nutzungSub:'Şartlar',osmFehler:'⚠️ OSM hatası: ',osmPlatz:'OSM Sahası',passwortKurz:'Şifre en az 6 karakter',personen:'kişi',plaetzeGeladen:'saha yüklendi',plaetzeInKm:'km içinde saha',platzEingetragen:'✅ Saha eklendi!',profilbildGespeichert:'📸 Profil fotoğrafı kaydedildi!',speicherVoll:'❌ Depolama dolu',speicherVollAlt:'⚠️ Depolama dolu — eski videolar silindi',spielbarGemeldet:'✅ Oynanabilir bildirildi!',spieleSub:'Yakınlığa göre',sportplaetze:'Sahalar',standortFehler:'Konum kullanılamıyor',standortGefunden:'📍 Konum bulundu!',standortLaden:'📍 Konum bulundu — sahalar yükleniyor...',statusAktualisiert:'✅ Durum güncellendi!',statusMelden:'Durum bildir',storyGeloescht:'Hikaye silindi',storyGepostet:'✅ Hikaye paylaşıldı! 24 saat görünür',storyZuGross:'Hikaye çok büyük',turniereSub:'Yakınlığa göre',videoGepostet:'✅ Video paylaşıldı!',videoVerarbeitung:'Video işleniyor...',videoZuGross:'Video çok büyük',wetterNicht:'Hava durumu yok',wiederOnline:'✅ Tekrar çevrimiçi',spontanspiel:'Anlık Maç',turnier:'Turnuva',spontanspielDesc:'Oyuncu bul & oyna',turnierDesc:'Resmi etkinlik',platzEintragenDesc:'Yeni saha bildir',statusMeldenDesc:'Boş / Dolu / Uyarı',sportart:'Spor',datumUhrzeit:'Tarih & Saat',maxSpieler:'Maks. oyuncu',maxTeams:'Maks. takım',altersbeschraenkung:'Yaş kısıtlaması',keinLimit:'Sınır yok',jugend:'Gençlik',wiederholen:'Tekrarla',einmalig:'Tek seferlik',woechentlich:'Haftalık',jedenMo:'Her Pzt',jedenMi:'Her Çar',jedenFr:'Her Cum',jedenSo:'Her Paz',nicknameLabel:'Kullanıcı adı (boş = Anonim)',turniername:'Turnuva adı',details:'Detaylar',tippen:'Buraya veya haritaya dokun',aendern:'Değiştir',melden:'Bildir',eintragen:'Kaydet',vereinstraining:'Kulüp antrenmanı',namePH:'örn. Bolzplatz Nordkiez',adresse:'Adres',strassePH:'Sokak, Şehir',sFussball:'Futbol',sBasketball:'Basketbol',sVolleyball:'Voleybol',sTennis:'Tenis',sHockey:'Hokey',sMulti:'Çoklu spor'},
@@ -4990,6 +4900,7 @@ function toggleLegend(){
 function showToast(msg,type='',dur){
   const el=document.getElementById('toast');
   el.textContent=msg;el.className='toast'+(type?' '+type:'');
+  el.onclick=()=>{el.classList.remove('show');clearTimeout(el._t);};
   el.classList.add('show');clearTimeout(el._t);
   el._t=setTimeout(()=>el.classList.remove('show'),dur||2800);
 }
