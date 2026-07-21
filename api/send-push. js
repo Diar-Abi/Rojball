@@ -1,0 +1,86 @@
+// Vercel API Route: /api/send-push
+// Versendet Web-Push-Benachrichtigungen an Nutzer in der Nähe eines Events/Spots.
+//
+// Deploy: Datei nach /api/send-push.js im Rojball-Repo legen.
+// Env-Vars in Vercel eintragen (Settings → Environment Variables):
+//   VAPID_PUBLIC_KEY   = BP-Eo9-rStB40sEjT172kTRwAyFog864WGnwaWOuvFTJ07zRC4LWnMwOm4S4phjN4bdjlOyy84hjIoLQ9YbqVdA
+//   VAPID_PRIVATE_KEY  = QQQ25m0XeQiu8lR52h35c3xAIpA_JwEn1sbQ82LIjtI
+//   SUPABASE_URL       = https://wdqfesczrhutyhozdrsu.supabase.co
+//   SUPABASE_SERVICE_ROLE_KEY = (Service Role Key aus Supabase → Settings → API — NICHT der anon key!)
+//
+// package.json braucht: "web-push": "^3.6.7", "@supabase/supabase-js": "^2.x"
+
+const webpush = require('web-push');
+const { createClient } = require('@supabase/supabase-js');
+
+webpush.setVapidDetails(
+  'mailto:kontakt@rojball.de',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Distanz in km zwischen zwei Koordinaten (Haversine)
+function distKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const { title, body, url, lat, lng, radiusKm, excludeUserId } = req.body || {};
+  if (!title || !body) {
+    res.status(400).json({ error: 'title und body sind erforderlich' });
+    return;
+  }
+
+  const { data: subs, error } = await supabase
+    .from('push_subscriptions')
+    .select('*');
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  const radius = radiusKm || 15;
+  const targets = (subs || []).filter(s => {
+    if (excludeUserId && s.user_id === excludeUserId) return false;
+    if (lat == null || lng == null || s.lat == null || s.lng == null) return true; // keine Koordinaten = trotzdem senden
+    return distKm(lat, lng, s.lat, s.lng) <= radius;
+  });
+
+  const payload = JSON.stringify({ title, body, url: url || '/' });
+  let sent = 0, failed = 0;
+
+  await Promise.all(targets.map(async (s) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        payload
+      );
+      sent++;
+    } catch (err) {
+      failed++;
+      // Abgelaufene/ungültige Subscription entfernen
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', s.endpoint);
+      }
+    }
+  }));
+
+  res.status(200).json({ sent, failed, total: targets.length });
+};
