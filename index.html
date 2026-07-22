@@ -146,32 +146,12 @@ document.addEventListener('DOMContentLoaded',initSupabase);
   var favicon=document.getElementById('roj-favicon');
   if(favicon&&icon192)favicon.href=icon192;
 
-  // Set PWA manifest
-  var manifest={
-    name:'Rojball — Street Sports Finder',
-    short_name:'Rojball',
-    description:'Finde Sportplätze, organisiere Spiele und triff Spieler in deiner Nähe.',
-    start_url:'.',
-    display:'standalone',
-    orientation:'portrait-primary',
-    background_color:'#080810',
-    theme_color:'#080810',
-    lang:'de',
-    categories:['sports','social'],
-    icons:[
-      {src:icon192||'',sizes:'192x192',type:'image/png',purpose:'any maskable'},
-      {src:icon512||'',sizes:'512x512',type:'image/png',purpose:'any maskable'},
-    ].filter(i=>i.src),
-    shortcuts:[
-      {name:'Plätze finden',url:'.',icons:[{src:icon192||'',sizes:'192x192'}]},
-    ]
-  };
-  try{
-    var blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var el=document.getElementById('roj-manifest');
-    if(el)el.href=url;
-  }catch(e){}
+  // PWA-Manifest: bewusst NICHT mehr per JS/Blob überschrieben.
+  // Blob-URLs sind nur im eigenen Browser-Tab gültig — PWABuilder und der
+  // Play Store können sie von außen nicht abrufen und melden dann
+  // "Manifest fehlt". Die statische /manifest.json (siehe <link> im <head>)
+  // ist die einzige Quelle und muss bei Namens-/Icon-Änderungen manuell
+  // mitgepflegt werden.
 
   // Service Worker for offline caching + push notifications
   // Muss eine echte Datei sein (nicht Blob), sonst funktioniert Push-Subscription
